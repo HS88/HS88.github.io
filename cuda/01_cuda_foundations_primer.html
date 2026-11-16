@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Primer: CUDA Foundations — A Beginner's Mental Model</title>
+<style>
+  @page {
+    size: A4;
+    margin: 2.5cm 2cm;
+  }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.7;
+    color: #1a1a1a;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 30px;
+    background: #fff;
+  }
+  h1 {
+    font-size: 26pt;
+    margin-top: 5px;
+    margin-bottom: 30px;
+    color: #111;
+    border-bottom: 1px solid #999;
+    padding-bottom: 15px;
+  }
+  h2 {
+    font-size: 18pt;
+    margin-top: 40px;
+    margin-bottom: 15px;
+    color: #222;
+    border-left: 4px solid #0066cc;
+    padding-left: 12px;
+  }
+  h3 {
+    font-size: 14pt;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  p { text-align: justify; margin-bottom: 12px; }
+  pre {
+    background: #f5f5f0;
+    border: 1px solid #ddd;
+    border-left: 4px solid #0066cc;
+    padding: 15px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: 3px;
+  }
+  code {
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    background: #f0f0eb;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .diagram {
+    margin: 25px auto;
+    padding: 20px;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+  .diagram-caption {
+    font-style: italic;
+    font-size: 10pt;
+    color: #555;
+    margin-top: 8px;
+    text-align: center;
+  }
+  .diagram svg { max-width: 100%; }
+  .key-concept {
+    background: #e8f4f8;
+    border: 2px solid #0066cc;
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin: 25px 0;
+    page-break-inside: avoid;
+  }
+  .key-concept-title {
+    font-weight: bold;
+    color: #0066cc;
+    font-size: 11pt;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .note-box {
+    background: #fff8e1;
+    border: 1px solid #f0c040;
+    border-left: 4px solid #f0a000;
+    border-radius: 3px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    page-break-inside: avoid;
+  }
+  .note-box-title {
+    font-weight: bold;
+    color: #b37700;
+    margin-bottom: 5px;
+  }
+  .analogy {
+    background: #f0fff0;
+    border: 1px solid #7cb97c;
+    border-left: 4px solid #2e8b2e;
+    border-radius: 3px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    page-break-inside: avoid;
+  }
+  .analogy-title {
+    font-weight: bold;
+    color: #2e8b2e;
+    margin-bottom: 5px;
+  }
+  .myth-box {
+    background: #fdecea;
+    border: 1px solid #f1a9a0;
+    border-left: 4px solid #c0392b;
+    border-radius: 3px;
+    padding: 14px 20px;
+    margin: 18px 0;
+  }
+  .myth-title {
+    font-weight: bold;
+    color: #c0392b;
+    margin-bottom: 4px;
+  }
+  .truth-box {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-left: 4px solid #2e7d32;
+    border-radius: 3px;
+    padding: 14px 20px;
+    margin: 8px 0 20px 0;
+  }
+  .truth-title {
+    font-weight: bold;
+    color: #2e7d32;
+    margin-bottom: 4px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 10.5pt;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: #e0e8f0;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+  }
+  tr:nth-child(even) { background: #f8f8f5; }
+  ol, ul { margin-bottom: 15px; padding-left: 30px; }
+  li { margin-bottom: 6px; }
+  .epigraph {
+    font-style: italic;
+    color: #555;
+    border-left: 3px solid #aaa;
+    padding-left: 15px;
+    margin: 30px 40px;
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+  .epigraph-author {
+    text-align: right;
+    font-size: 10pt;
+    color: #777;
+  }
+  .toc {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    padding: 20px 30px;
+    margin: 30px 0;
+    border-radius: 5px;
+  }
+  .toc h3 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+  }
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+    padding-left: 0;
+  }
+  .toc > ol > li {
+    counter-increment: toc;
+    margin-bottom: 4px;
+  }
+  .toc > ol > li::before {
+    content: counter(toc) ". ";
+    font-weight: bold;
+    color: #0066cc;
+  }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>CUDA Foundations: A Beginner's Mental Model</h1>
+
+<div class="epigraph">
+  "Before you can learn the fancy tricks, you need to know what the pieces are and where they live. This primer is for anyone who has read a CUDA kernel and thought: wait, how does that even work?"
+  <div class="epigraph-author">— Why this document exists</div>
+</div>
+
+<p>
+This primer answers three questions that trip up almost every CUDA beginner:
+</p>
+
+<ol>
+  <li>When a kernel runs, <strong>who can see what</strong>? Which variables are private to one thread, which are shared, which are visible everywhere?</li>
+  <li>When we say "the threads cooperate," what is physically happening? How can one thread get data that <em>another</em> thread wrote?</li>
+  <li>How does the GPU actually schedule all those thousands of threads? Does it "context switch" like an operating system?</li>
+</ol>
+
+<p>
+Once these three questions click, everything in the other chapters — grid-stride loops, shared-memory tiling, cooperative loads, boundary padding — becomes obvious. Read this primer first, then go back to the other chapters.
+</p>
+
+<div class="toc">
+  <h3>Contents of This Primer</h3>
+  <ol>
+    <li>The Three Scales: Grid, Block, Thread</li>
+    <li>What Each Thread Owns For Itself</li>
+    <li>What Threads in the Same Block Share</li>
+    <li>What Everybody Shares (Global Memory)</li>
+    <li>The Visibility Table — Who Can See What</li>
+    <li>How Threads "Talk" — The Whiteboard Mechanism</li>
+    <li>Why Threads in Different Blocks Can't Talk</li>
+    <li>Warps — How the GPU Really Runs 32 Threads at a Time</li>
+    <li>"Context Switching" — It's Not What You Think</li>
+    <li>A Tiny Cooperative Example You Can Trace in 30 Seconds</li>
+    <li>Common Misconceptions, Cleared Up</li>
+    <li>Now You're Ready</li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2>1. The Three Scales: Grid, Block, Thread</h2>
+
+<p>
+A CUDA kernel launch creates a huge collection of lightweight "workers." To keep them organized, CUDA arranges them in a three-level hierarchy. From smallest to largest:
+</p>
+
+<ol>
+  <li><strong>Thread</strong> — a single worker. It runs the kernel code once, start to finish. It has its own small set of private variables (registers) and its own unique ID.</li>
+  <li><strong>Block</strong> — a group of threads (up to 1,024 of them) that run together on the same hardware unit (an "SM"). Threads in the same block can <em>cooperate</em>: they can share a small, fast scratchpad and they can wait for each other at barriers.</li>
+  <li><strong>Grid</strong> — the entire collection of blocks that one kernel launch creates. There can be millions of blocks in a grid. Blocks in the same grid cannot talk to each other during the kernel.</li>
+</ol>
+
+<div class="analogy">
+  <div class="analogy-title">Analogy: A Big Office Building</div>
+  Think of the whole kernel launch as an <strong>office building</strong> (grid). The building has many <strong>meeting rooms</strong> (blocks). Each meeting room contains a few <strong>employees</strong> (threads). Employees in the same room can talk to each other, write on the room's whiteboard, and agree to pause together. Employees in <em>different</em> rooms cannot hear each other, cannot see each other's whiteboards, and cannot coordinate in real time. The only way for one room to send a message to another room is to write it down on the shared company intranet — slow, visible to everyone, no privacy.
+</div>
+
+<div class="diagram">
+  <svg width="720" height="290" viewBox="0 0 720 290">
+    <text x="360" y="22" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">The Three Scales</text>
+
+    <!-- Grid (outer box) -->
+    <rect x="30" y="40" width="660" height="230" rx="8" fill="#f0f7ff" stroke="#3366aa" stroke-width="2"/>
+    <text x="50" y="62" font-size="13" font-weight="bold" fill="#3366aa">Grid  —  one per kernel launch, millions of blocks possible</text>
+
+    <!-- Three blocks inside -->
+    <g>
+      <!-- Block 1 -->
+      <rect x="55" y="80" width="195" height="170" rx="6" fill="#fff3e0" stroke="#e67700" stroke-width="2"/>
+      <text x="152" y="102" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67700">Block</text>
+
+      <!-- Threads -->
+      <g>
+        <circle cx="90" cy="130" r="14" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+        <text x="90" y="134" text-anchor="middle" font-size="8" fill="#1b5e20" font-weight="bold">T0</text>
+        <circle cx="130" cy="130" r="14" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+        <text x="130" y="134" text-anchor="middle" font-size="8" fill="#1b5e20" font-weight="bold">T1</text>
+        <circle cx="170" cy="130" r="14" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+        <text x="170" y="134" text-anchor="middle" font-size="8" fill="#1b5e20" font-weight="bold">T2</text>
+        <circle cx="210" cy="130" r="14" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+        <text x="210" y="134" text-anchor="middle" font-size="8" fill="#1b5e20" font-weight="bold">T3</text>
+      </g>
+
+      <!-- Whiteboard (shared memory) -->
+      <rect x="70" y="170" width="165" height="30" rx="3" fill="#e1f5fe" stroke="#0288d1" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="152" y="189" text-anchor="middle" font-size="9" fill="#01579b" font-weight="bold">shared whiteboard</text>
+
+      <!-- Barrier -->
+      <text x="152" y="220" text-anchor="middle" font-size="9" fill="#555" font-style="italic">can sync + share data</text>
+      <text x="152" y="235" text-anchor="middle" font-size="9" fill="#555" font-style="italic">with its 3 roommates</text>
+    </g>
+
+    <g transform="translate(205, 0)">
+      <rect x="55" y="80" width="195" height="170" rx="6" fill="#fff3e0" stroke="#e67700" stroke-width="2"/>
+      <text x="152" y="102" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67700">Block</text>
+      <g>
+        <circle cx="90" cy="130" r="14" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+        <text x="90" y="134" text-anchor="middle" font-size="8" fill="#0d47a1" font-weight="bold">T0</text>
+        <circle cx="130" cy="130" r="14" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+        <text x="130" y="134" text-anchor="middle" font-size="8" fill="#0d47a1" font-weight="bold">T1</text>
+        <circle cx="170" cy="130" r="14" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+        <text x="170" y="134" text-anchor="middle" font-size="8" fill="#0d47a1" font-weight="bold">T2</text>
+        <circle cx="210" cy="130" r="14" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+        <text x="210" y="134" text-anchor="middle" font-size="8" fill="#0d47a1" font-weight="bold">T3</text>
+      </g>
+      <rect x="70" y="170" width="165" height="30" rx="3" fill="#e1f5fe" stroke="#0288d1" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="152" y="189" text-anchor="middle" font-size="9" fill="#01579b" font-weight="bold">shared whiteboard</text>
+      <text x="152" y="220" text-anchor="middle" font-size="9" fill="#555" font-style="italic">its OWN whiteboard</text>
+      <text x="152" y="235" text-anchor="middle" font-size="9" fill="#555" font-style="italic">(not the same one!)</text>
+    </g>
+
+    <g transform="translate(410, 0)">
+      <rect x="55" y="80" width="195" height="170" rx="6" fill="#fff3e0" stroke="#e67700" stroke-width="2"/>
+      <text x="152" y="102" text-anchor="middle" font-size="11" font-weight="bold" fill="#e67700">Block</text>
+      <g>
+        <circle cx="90" cy="130" r="14" fill="#ce93d8" stroke="#7b1fa2" stroke-width="1.5"/>
+        <text x="90" y="134" text-anchor="middle" font-size="8" fill="#4a148c" font-weight="bold">T0</text>
+        <circle cx="130" cy="130" r="14" fill="#ce93d8" stroke="#7b1fa2" stroke-width="1.5"/>
+        <text x="130" y="134" text-anchor="middle" font-size="8" fill="#4a148c" font-weight="bold">T1</text>
+        <circle cx="170" cy="130" r="14" fill="#ce93d8" stroke="#7b1fa2" stroke-width="1.5"/>
+        <text x="170" y="134" text-anchor="middle" font-size="8" fill="#4a148c" font-weight="bold">T2</text>
+        <circle cx="210" cy="130" r="14" fill="#ce93d8" stroke="#7b1fa2" stroke-width="1.5"/>
+        <text x="210" y="134" text-anchor="middle" font-size="8" fill="#4a148c" font-weight="bold">T3</text>
+      </g>
+      <rect x="70" y="170" width="165" height="30" rx="3" fill="#e1f5fe" stroke="#0288d1" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="152" y="189" text-anchor="middle" font-size="9" fill="#01579b" font-weight="bold">shared whiteboard</text>
+      <text x="152" y="220" text-anchor="middle" font-size="9" fill="#555" font-style="italic">this room can't hear</text>
+      <text x="152" y="235" text-anchor="middle" font-size="9" fill="#555" font-style="italic">the others either</text>
+    </g>
+  </svg>
+  <div class="diagram-caption">Figure 1.1 — Three meeting rooms (blocks) in the same office building (grid). Each room has four employees (threads) and its own private whiteboard. The three whiteboards are completely separate pieces of physical material.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2>2. What Each Thread Owns For Itself</h2>
+
+<p>
+Every thread has its own <strong>registers</strong>. A register is the fastest memory on the chip — one cycle of latency — and it is completely private. When you write code like:
+</p>
+
+<pre>
+int i = blockIdx.x * blockDim.x + threadIdx.x;
+float sum = 0.0f;
+</pre>
+
+<p>
+…the variables <code>i</code> and <code>sum</code> live in registers. <strong>Every thread gets its own copy</strong>. If 1,024 threads run this code, there are 1,024 completely separate <code>sum</code> variables on the chip at the same time.
+</p>
+
+<div class="note-box">
+  <div class="note-box-title">Why This Matters</div>
+  Think about what this means for the tiled matmul kernel. Each thread had its own <code>float sum</code> accumulator. All four threads in the block were updating <em>their own</em> sum independently; none of them was writing to any other thread's sum. That's why no barriers or locks were needed for the accumulator.
+</div>
+
+<!-- ================================================================== -->
+<h2>3. What Threads in the Same Block Share</h2>
+
+<p>
+Inside the kernel, when you write:
+</p>
+
+<pre>
+__shared__ float tile[16][16];
+</pre>
+
+<p>
+you are declaring <strong>shared memory</strong>. Three things to know about it:
+</p>
+
+<ol>
+  <li>The GPU allocates <em>one</em> copy of this array per block. So if 100 blocks are running, there are 100 separate <code>tile</code> arrays — each block sees only its own.</li>
+  <li>Within a block, <strong>every thread sees the same <code>tile</code></strong>. If thread A writes <code>tile[5][7] = 42.0f</code>, then (after a barrier) thread B can read <code>tile[5][7]</code> and get 42.0f.</li>
+  <li>Shared memory is <em>fast</em> — roughly 20× faster than global memory, because it lives physically close to the SM's compute units.</li>
+</ol>
+
+<p>
+Shared memory is the GPU's answer to the question "how can threads cooperate?". Its entire purpose is to give every thread in the block access to the <em>same</em> values. It is a <strong>shared scratchpad</strong>, not a private one.
+</p>
+
+<!-- ================================================================== -->
+<h2>4. What Everybody Shares (Global Memory)</h2>
+
+<p>
+Then there is <strong>global memory</strong> — the big DRAM chips soldered to the circuit board. Several gigabytes in size, visible to every thread of every block in every kernel launch. This is where you put your input arrays and read back your output arrays. It persists across kernel launches, too, which is how one kernel's output becomes the next kernel's input.
+</p>
+
+<p>
+The trade-off: global memory is <em>slow</em>. 20× to 40× slower than shared memory. This is exactly the bottleneck that the tiling chapter addressed.
+</p>
+
+<!-- ================================================================== -->
+<h2>5. The Visibility Table — Who Can See What</h2>
+
+<p>
+Here is the most important table in this primer. Memorize this and half of CUDA becomes obvious.
+</p>
+
+<table>
+  <tr>
+    <th>Thing</th>
+    <th>Lives in</th>
+    <th>Visible to</th>
+    <th>Lifetime</th>
+    <th>Speed</th>
+  </tr>
+  <tr>
+    <td><code>int x;</code> inside kernel</td>
+    <td>Register</td>
+    <td>Just this one thread</td>
+    <td>Until the thread finishes</td>
+    <td>Fastest (1 cycle)</td>
+  </tr>
+  <tr>
+    <td><code>__shared__ float t[16];</code></td>
+    <td>Shared memory</td>
+    <td>Every thread in this one block</td>
+    <td>Until the block finishes</td>
+    <td>Fast (~20 cycles)</td>
+  </tr>
+  <tr>
+    <td><code>float* A</code> (kernel arg)</td>
+    <td>Global memory (pointed to)</td>
+    <td>Every thread in every block</td>
+    <td>Until the host frees it</td>
+    <td>Slow (~500 cycles)</td>
+  </tr>
+  <tr>
+    <td>Kernel arguments like <code>int M</code></td>
+    <td>Register (copied in at launch)</td>
+    <td>Every thread (same value)</td>
+    <td>Until the thread finishes</td>
+    <td>Fastest</td>
+  </tr>
+  <tr>
+    <td><code>threadIdx.x</code>, <code>blockIdx.x</code></td>
+    <td>Built-in (per-thread)</td>
+    <td>Just this one thread (each thread sees its own)</td>
+    <td>For the duration of the kernel</td>
+    <td>Fastest</td>
+  </tr>
+</table>
+
+<div class="key-concept">
+  <div class="key-concept-title">One Simple Rule</div>
+  <p>The scope of a variable in a CUDA kernel is determined entirely by <strong>where you declare it</strong>:</p>
+  <ul>
+    <li>Declared with just <code>float x;</code> → private to one thread (register).</li>
+    <li>Declared with <code>__shared__ float x;</code> → shared by all threads in one block.</li>
+    <li>Allocated by the host with <code>cudaMalloc</code> → in global memory, visible everywhere.</li>
+  </ul>
+</div>
+
+<!-- ================================================================== -->
+<h2>6. How Threads "Talk" — The Whiteboard Mechanism</h2>
+
+<p>
+This is the question that probably confused you: <em>"How can thread A inside one block get data that thread B produced, while A is computing its dot product?"</em>
+</p>
+
+<p>
+The crucial thing to understand is that <strong>thread A never reaches into thread B</strong>. Threads do not have access to each other's registers. They do not call each other. They do not pass messages directly.
+</p>
+
+<p>
+What they do is use a <strong>common piece of memory</strong> that both of them can see. That memory is shared memory. The pattern always looks like this:
+</p>
+
+<div class="diagram">
+  <svg width="720" height="320" viewBox="0 0 720 320">
+    <text x="360" y="22" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">How Thread A "Gets" Thread B's Data — The Three-Step Pattern</text>
+
+    <!-- Step 1: WRITE -->
+    <rect x="30" y="50" width="660" height="70" rx="6" fill="#fff8e1" stroke="#f0a000" stroke-width="2"/>
+    <text x="50" y="72" font-size="12" font-weight="bold" fill="#b37700">Step 1 — WRITE:  Each thread writes its own value into its own slot of shared memory.</text>
+
+    <!-- Threads and arrows writing to shared mem -->
+    <g>
+      <circle cx="110" cy="100" r="12" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+      <text x="110" y="104" text-anchor="middle" font-size="8" font-weight="bold">T0</text>
+      <circle cx="220" cy="100" r="12" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+      <text x="220" y="104" text-anchor="middle" font-size="8" font-weight="bold">T1</text>
+      <circle cx="330" cy="100" r="12" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+      <text x="330" y="104" text-anchor="middle" font-size="8" font-weight="bold">T2</text>
+      <circle cx="440" cy="100" r="12" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+      <text x="440" y="104" text-anchor="middle" font-size="8" font-weight="bold">T3</text>
+    </g>
+
+    <!-- Step 2: BARRIER -->
+    <rect x="30" y="135" width="660" height="40" rx="6" fill="#ffecb3" stroke="#f0a000" stroke-width="2"/>
+    <text x="360" y="160" text-anchor="middle" font-size="13" font-weight="bold" fill="#b37700">Step 2 — BARRIER:  __syncthreads()  —  everyone waits here until the WRITE phase is complete.</text>
+
+    <!-- Step 3: READ -->
+    <rect x="30" y="190" width="660" height="80" rx="6" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+    <text x="50" y="212" font-size="12" font-weight="bold" fill="#2e7d32">Step 3 — READ:  Any thread can now read ANY slot (including slots other threads wrote).</text>
+
+    <!-- Threads reading, with arrows going to multiple slots -->
+    <g>
+      <circle cx="110" cy="243" r="12" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+      <text x="110" y="247" text-anchor="middle" font-size="8" font-weight="bold">T0</text>
+      <circle cx="220" cy="243" r="12" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+      <text x="220" y="247" text-anchor="middle" font-size="8" font-weight="bold">T1</text>
+      <circle cx="330" cy="243" r="12" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+      <text x="330" y="247" text-anchor="middle" font-size="8" font-weight="bold">T2</text>
+      <circle cx="440" cy="243" r="12" fill="#a5d6a7" stroke="#2e7d32" stroke-width="1.5"/>
+      <text x="440" y="247" text-anchor="middle" font-size="8" font-weight="bold">T3</text>
+    </g>
+
+    <!-- Shared memory on the right throughout -->
+    <rect x="510" y="92" width="170" height="170" rx="5" fill="#e1f5fe" stroke="#0288d1" stroke-width="2"/>
+    <text x="595" y="110" text-anchor="middle" font-size="10" font-weight="bold" fill="#01579b">shared memory</text>
+    <text x="595" y="124" text-anchor="middle" font-size="8" fill="#01579b">(one per block)</text>
+
+    <!-- Four slots -->
+    <rect x="525" y="135" width="30" height="24" fill="#fff" stroke="#0288d1"/>
+    <text x="540" y="151" text-anchor="middle" font-size="9" font-family="Courier New">s[0]</text>
+    <rect x="565" y="135" width="30" height="24" fill="#fff" stroke="#0288d1"/>
+    <text x="580" y="151" text-anchor="middle" font-size="9" font-family="Courier New">s[1]</text>
+    <rect x="605" y="135" width="30" height="24" fill="#fff" stroke="#0288d1"/>
+    <text x="620" y="151" text-anchor="middle" font-size="9" font-family="Courier New">s[2]</text>
+    <rect x="645" y="135" width="30" height="24" fill="#fff" stroke="#0288d1"/>
+    <text x="660" y="151" text-anchor="middle" font-size="9" font-family="Courier New">s[3]</text>
+
+    <text x="595" y="180" text-anchor="middle" font-size="8" fill="#01579b">after WRITE phase:</text>
+    <rect x="525" y="187" width="30" height="24" fill="#c8e6c8" stroke="#0288d1"/>
+    <text x="540" y="203" text-anchor="middle" font-size="9" font-family="Courier New">42</text>
+    <rect x="565" y="187" width="30" height="24" fill="#c8e6c8" stroke="#0288d1"/>
+    <text x="580" y="203" text-anchor="middle" font-size="9" font-family="Courier New">17</text>
+    <rect x="605" y="187" width="30" height="24" fill="#c8e6c8" stroke="#0288d1"/>
+    <text x="620" y="203" text-anchor="middle" font-size="9" font-family="Courier New">99</text>
+    <rect x="645" y="187" width="30" height="24" fill="#c8e6c8" stroke="#0288d1"/>
+    <text x="660" y="203" text-anchor="middle" font-size="9" font-family="Courier New">33</text>
+
+    <text x="595" y="233" text-anchor="middle" font-size="8" fill="#01579b">all 4 slots filled — safe to read</text>
+
+    <!-- Arrows: Step 1 WRITE arrows -->
+    <defs>
+      <marker id="arr_w" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#b37700"/>
+      </marker>
+      <marker id="arr_r" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#2e7d32"/>
+      </marker>
+    </defs>
+    <line x1="122" y1="100" x2="525" y2="147" stroke="#b37700" stroke-width="1" marker-end="url(#arr_w)"/>
+    <line x1="232" y1="100" x2="565" y2="147" stroke="#b37700" stroke-width="1" marker-end="url(#arr_w)"/>
+    <line x1="342" y1="100" x2="605" y2="147" stroke="#b37700" stroke-width="1" marker-end="url(#arr_w)"/>
+    <line x1="452" y1="100" x2="645" y2="147" stroke="#b37700" stroke-width="1" marker-end="url(#arr_w)"/>
+
+    <!-- Step 3 READ arrows: T0 reads from ALL slots, for example -->
+    <line x1="525" y1="199" x2="122" y2="245" stroke="#2e7d32" stroke-width="1" marker-end="url(#arr_r)" stroke-dasharray="3,2"/>
+    <line x1="565" y1="199" x2="122" y2="245" stroke="#2e7d32" stroke-width="1" marker-end="url(#arr_r)" stroke-dasharray="3,2"/>
+    <line x1="605" y1="199" x2="122" y2="245" stroke="#2e7d32" stroke-width="1" marker-end="url(#arr_r)" stroke-dasharray="3,2"/>
+    <line x1="645" y1="199" x2="122" y2="245" stroke="#2e7d32" stroke-width="1" marker-end="url(#arr_r)" stroke-dasharray="3,2"/>
+
+    <text x="120" y="290" text-anchor="middle" font-size="9" fill="#2e7d32" font-weight="bold">T0 can now read all 4 slots — including the ones T1, T2, T3 wrote.</text>
+    <text x="120" y="304" text-anchor="middle" font-size="8" fill="#555" font-style="italic">(T1, T2, T3 do the same thing in parallel. Not shown to avoid spaghetti.)</text>
+  </svg>
+  <div class="diagram-caption">Figure 6.1 — The three-step pattern. In step 1, each thread writes its own value to its own slot — no thread is reading anything from anyone else. In step 2, everyone waits. In step 3, any thread may read any slot. Thread 0 reading s[2] isn't "reaching into" Thread 2 — it's just looking at a slot in a common memory region that happens to have been written by Thread 2.</div>
+</div>
+
+<div class="key-concept">
+  <div class="key-concept-title">The Correct Way to Say It</div>
+  <p>Instead of saying <em>"thread A gets data from thread B"</em>, say:</p>
+  <p style="text-align: center; font-size: 13pt; font-weight: bold; margin: 15px 0;">"Thread A reads a shared-memory slot that happens to have been written by thread B."</p>
+  <p>Both threads are reading and writing the <em>same chunk of memory</em>. Neither thread is touching the other. The shared memory is the medium. The <code>__syncthreads()</code> call is the handshake that makes the writes visible before any read begins.</p>
+</div>
+
+<!-- ================================================================== -->
+<h2>7. Why Threads in Different Blocks Can't Talk</h2>
+
+<p>
+Each block runs on <em>one</em> SM. Each SM has <em>its own</em> shared-memory hardware — a few tens of kilobytes of SRAM physically wired into the SM. When you declare <code>__shared__ float t[16]</code>, the compiler allocates space in the shared-memory hardware of whichever SM the block happens to land on. A block running on SM #3 and a block running on SM #17 are using <em>physically different pieces of silicon</em> for their shared memory. There is simply no wire connecting them.
+</p>
+
+<p>
+Similarly, <code>__syncthreads()</code> is a barrier wired into the SM; it can only coordinate threads that are co-located on that SM in that block. There is no cross-SM barrier.
+</p>
+
+<div class="note-box">
+  <div class="note-box-title">The One Exception: Global Memory</div>
+  If you really need two blocks to share data, you can have one block write to a global memory location and (in a later kernel launch) a second block read from the same location. But this requires crossing the slow DRAM, and you usually need a separate kernel launch to get a correct ordering. The lesson: design your blocks to be independent whenever possible.
+</div>
+
+<!-- ================================================================== -->
+<div class="page-break"></div>
+<h2>8. Warps — How the GPU Really Runs 32 Threads at a Time</h2>
+
+<p>
+Now let us get to how threads <em>actually</em> execute. This is where the GPU differs most from a CPU.
+</p>
+
+<p>
+The hardware does not schedule one thread at a time. It schedules <strong>warps</strong>. A warp is a group of exactly <strong>32 consecutive threads</strong> from the same block. The hardware takes threads 0–31 of your block and bundles them as warp 0; threads 32–63 become warp 1; and so on. If your block has 256 threads, the hardware sees it as 8 warps.
+</p>
+
+<p>
+All 32 threads of a warp execute <strong>the same instruction at the same time</strong>, each on their own data. This is called <strong>SIMT</strong> (Single Instruction, Multiple Threads). You can think of a warp as a vector unit: one instruction, 32-wide.
+</p>
+
+<div class="diagram">
+  <svg width="720" height="260" viewBox="0 0 720 260">
+    <text x="360" y="22" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">A Warp: 32 Threads, Lockstep, One Instruction at a Time</text>
+
+    <!-- Warp as a row of 32 small circles -->
+    <text x="30" y="60" font-size="11" fill="#333">Warp 0:</text>
+    <g>
+      <!-- 32 circles in a row -->
+      <g>
+        <!-- First 16 -->
+        <g fill="#90caf9" stroke="#1565c0" stroke-width="1">
+          <circle cx="90" cy="60" r="8"/><circle cx="110" cy="60" r="8"/><circle cx="130" cy="60" r="8"/><circle cx="150" cy="60" r="8"/>
+          <circle cx="170" cy="60" r="8"/><circle cx="190" cy="60" r="8"/><circle cx="210" cy="60" r="8"/><circle cx="230" cy="60" r="8"/>
+          <circle cx="250" cy="60" r="8"/><circle cx="270" cy="60" r="8"/><circle cx="290" cy="60" r="8"/><circle cx="310" cy="60" r="8"/>
+          <circle cx="330" cy="60" r="8"/><circle cx="350" cy="60" r="8"/><circle cx="370" cy="60" r="8"/><circle cx="390" cy="60" r="8"/>
+        </g>
+        <!-- Second 16 -->
+        <g fill="#90caf9" stroke="#1565c0" stroke-width="1">
+          <circle cx="410" cy="60" r="8"/><circle cx="430" cy="60" r="8"/><circle cx="450" cy="60" r="8"/><circle cx="470" cy="60" r="8"/>
+          <circle cx="490" cy="60" r="8"/><circle cx="510" cy="60" r="8"/><circle cx="530" cy="60" r="8"/><circle cx="550" cy="60" r="8"/>
+          <circle cx="570" cy="60" r="8"/><circle cx="590" cy="60" r="8"/><circle cx="610" cy="60" r="8"/><circle cx="630" cy="60" r="8"/>
+          <circle cx="650" cy="60" r="8"/><circle cx="670" cy="60" r="8"/><circle cx="690" cy="60" r="8"/><circle cx="710" cy="60" r="8"/>
+        </g>
+      </g>
+    </g>
+    <text x="90" y="85" font-size="7" fill="#555">T0</text>
+    <text x="390" y="85" font-size="7" fill="#555">T15</text>
+    <text x="710" y="85" font-size="7" fill="#555">T31</text>
+
+    <!-- A single instruction being broadcast to all 32 -->
+    <rect x="200" y="110" width="320" height="30" rx="4" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+    <text x="360" y="130" text-anchor="middle" font-size="12" font-weight="bold" fill="#e65100">ONE instruction: "add %r1, %r2, %r3"</text>
+
+    <!-- 32 arrows going down to 32 threads -->
+    <g stroke="#e65100" stroke-width="1" opacity="0.4">
+      <line x1="90"  y1="140" x2="90"  y2="75"/>
+      <line x1="200" y1="140" x2="200" y2="75"/>
+      <line x1="300" y1="140" x2="300" y2="75"/>
+      <line x1="420" y1="140" x2="420" y2="75"/>
+      <line x1="520" y1="140" x2="520" y2="75"/>
+      <line x1="620" y1="140" x2="620" y2="75"/>
+      <line x1="710" y1="140" x2="710" y2="75"/>
+    </g>
+
+    <text x="360" y="162" text-anchor="middle" font-size="10" fill="#333">Every one of the 32 threads executes this same instruction, each on its own private registers.</text>
+
+    <!-- Rule box -->
+    <rect x="80" y="180" width="560" height="65" fill="#e8f4f8" stroke="#0066cc" stroke-width="2" rx="6"/>
+    <text x="360" y="200" text-anchor="middle" font-size="11" font-weight="bold" fill="#0066cc">THE RULE</text>
+    <text x="100" y="220" font-size="10" fill="#333">· 32 threads per warp. Always. (Across every generation of NVIDIA GPU.)</text>
+    <text x="100" y="236" font-size="10" fill="#333">· A warp is the unit the scheduler picks. You cannot run "half a warp" or "a single thread" — it's the full 32 or nothing.</text>
+  </svg>
+  <div class="diagram-caption">Figure 8.1 — Thirty-two threads form one warp. They move together, instruction by instruction, each on their own data.</div>
+</div>
+
+<p>
+This has two consequences that bite beginners:
+</p>
+
+<ol>
+  <li><strong>Make your block sizes multiples of 32.</strong> If you launch a block of 100 threads, the hardware still bundles them into 4 warps of 32 — but the 4th warp only has 28 "real" threads; the other 4 are wasted. Block sizes of 128, 256, or 512 are classic sweet spots.</li>
+  <li><strong>If threads in a warp take different branches of an <code>if</code>, they run them serially.</strong> This is called "warp divergence." Not catastrophic, but keep <code>if</code>-statements light inside the inner loop of a hot kernel.</li>
+</ol>
+
+<!-- ================================================================== -->
+<h2>9. "Context Switching" — It's Not What You Think</h2>
+
+<p>
+Here's the question you asked: <em>"When one warp is waiting, does the GPU context switch to another warp like an OS?"</em>
+</p>
+
+<p>
+The short answer is: <strong>yes, the warp scheduler picks a different warp when one is stalled — but no state ever gets saved or loaded</strong>. Nothing like an OS context switch happens. Here is why.
+</p>
+
+<p>
+Each SM has enough physical register space to hold the complete state of <em>many warps at once</em> — typically up to 32 or 48 resident warps on older architectures, 64 on modern ones. When the kernel launches, the SM parcels out its register file: warp 0 gets its slice, warp 1 gets its slice, and so on, up to however many fit. Those register slices then <em>stay put</em> until each warp finishes.
+</p>
+
+<p>
+In each cycle, the SM's hardware scheduler looks at all resident warps and asks: "which warps have an instruction ready to issue right now?" (A warp whose last instruction was a memory load might still be waiting for the data to arrive.) Of the ready warps, the scheduler picks one and runs its next instruction. On the next cycle it might pick a different warp.
+</p>
+
+<div class="diagram">
+  <svg width="720" height="330" viewBox="0 0 720 330">
+    <text x="360" y="22" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">Warp Scheduling: No State Moves, Ever</text>
+
+    <!-- SM "bus" with multiple warp register slots -->
+    <rect x="30" y="50" width="660" height="150" rx="8" fill="#f8f8f0" stroke="#999" stroke-width="2"/>
+    <text x="45" y="72" font-size="12" font-weight="bold" fill="#333">One SM — register file holds ALL resident warps concurrently</text>
+
+    <!-- 4 example warp slots -->
+    <g>
+      <!-- Warp 0 : running -->
+      <rect x="50" y="90" width="150" height="90" fill="#c8e6c8" stroke="#2e7d32" stroke-width="2"/>
+      <text x="125" y="108" text-anchor="middle" font-size="10" font-weight="bold" fill="#1b5e20">Warp 0 — running</text>
+      <text x="125" y="125" text-anchor="middle" font-size="9" fill="#555">(its registers)</text>
+      <rect x="60" y="135" width="26" height="12" fill="#a5d6a7" stroke="#1b5e20"/>
+      <rect x="90" y="135" width="26" height="12" fill="#a5d6a7" stroke="#1b5e20"/>
+      <rect x="120" y="135" width="26" height="12" fill="#a5d6a7" stroke="#1b5e20"/>
+      <rect x="150" y="135" width="26" height="12" fill="#a5d6a7" stroke="#1b5e20"/>
+      <text x="125" y="167" text-anchor="middle" font-size="8" fill="#333" font-style="italic">issuing an ADD this cycle</text>
+
+      <!-- Warp 1 : stalled on memory -->
+      <rect x="210" y="90" width="150" height="90" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+      <text x="285" y="108" text-anchor="middle" font-size="10" font-weight="bold" fill="#bf360c">Warp 1 — stalled</text>
+      <text x="285" y="125" text-anchor="middle" font-size="9" fill="#555">(its registers)</text>
+      <rect x="220" y="135" width="26" height="12" fill="#ffcc80" stroke="#bf360c"/>
+      <rect x="250" y="135" width="26" height="12" fill="#ffcc80" stroke="#bf360c"/>
+      <rect x="280" y="135" width="26" height="12" fill="#ffcc80" stroke="#bf360c"/>
+      <rect x="310" y="135" width="26" height="12" fill="#ffcc80" stroke="#bf360c"/>
+      <text x="285" y="167" text-anchor="middle" font-size="8" fill="#333" font-style="italic">waiting for global load</text>
+
+      <!-- Warp 2 : ready -->
+      <rect x="370" y="90" width="150" height="90" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+      <text x="445" y="108" text-anchor="middle" font-size="10" font-weight="bold" fill="#0d47a1">Warp 2 — ready</text>
+      <text x="445" y="125" text-anchor="middle" font-size="9" fill="#555">(its registers)</text>
+      <rect x="380" y="135" width="26" height="12" fill="#90caf9" stroke="#0d47a1"/>
+      <rect x="410" y="135" width="26" height="12" fill="#90caf9" stroke="#0d47a1"/>
+      <rect x="440" y="135" width="26" height="12" fill="#90caf9" stroke="#0d47a1"/>
+      <rect x="470" y="135" width="26" height="12" fill="#90caf9" stroke="#0d47a1"/>
+      <text x="445" y="167" text-anchor="middle" font-size="8" fill="#333" font-style="italic">ready for next cycle</text>
+
+      <!-- Warp 3 : stalled on barrier -->
+      <rect x="530" y="90" width="150" height="90" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+      <text x="605" y="108" text-anchor="middle" font-size="10" font-weight="bold" fill="#bf360c">Warp 3 — stalled</text>
+      <text x="605" y="125" text-anchor="middle" font-size="9" fill="#555">(its registers)</text>
+      <rect x="540" y="135" width="26" height="12" fill="#ffcc80" stroke="#bf360c"/>
+      <rect x="570" y="135" width="26" height="12" fill="#ffcc80" stroke="#bf360c"/>
+      <rect x="600" y="135" width="26" height="12" fill="#ffcc80" stroke="#bf360c"/>
+      <rect x="630" y="135" width="26" height="12" fill="#ffcc80" stroke="#bf360c"/>
+      <text x="605" y="167" text-anchor="middle" font-size="8" fill="#333" font-style="italic">at __syncthreads()</text>
+    </g>
+
+    <!-- Scheduler -->
+    <rect x="200" y="220" width="320" height="40" rx="6" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+    <text x="360" y="245" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a148c">Warp Scheduler  →  picks a READY warp each cycle</text>
+
+    <!-- arrows -->
+    <defs>
+      <marker id="arr_sch" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#7b1fa2"/>
+      </marker>
+    </defs>
+    <line x1="280" y1="220" x2="125" y2="185" stroke="#7b1fa2" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr_sch)"/>
+    <line x1="440" y1="220" x2="445" y2="185" stroke="#7b1fa2" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr_sch)"/>
+
+    <text x="360" y="283" text-anchor="middle" font-size="10" fill="#333" font-weight="bold">Notice what did NOT happen: nobody's registers got saved, nobody got "paged out."</text>
+    <text x="360" y="298" text-anchor="middle" font-size="10" fill="#333">All four warps' states are alive simultaneously. Switching between them is free.</text>
+    <text x="360" y="313" text-anchor="middle" font-size="10" fill="#555" font-style="italic">This is why GPUs oversubscribe — you WANT many warps per SM so there's always a ready one when another stalls.</text>
+  </svg>
+  <div class="diagram-caption">Figure 9.1 — Warp scheduling. The scheduler sees all resident warps, picks a ready one each cycle, and issues one of its instructions. The stalled warps don't go anywhere — they just don't get picked that cycle. This is nothing like an OS context switch.</div>
+</div>
+
+<div class="myth-box">
+  <div class="myth-title">Myth</div>
+  "When the GPU runs out of threads to run, it pauses one warp and starts another, like a CPU switching between processes."
+</div>
+<div class="truth-box">
+  <div class="truth-title">Truth</div>
+  No warp is ever paused or resumed in the CPU-process sense. All resident warps live on the SM at the same time with all their registers intact. The scheduler just picks a different ready warp when the current one stalls. There is no state to save, so the switch is free — this is why it is called <strong>zero-overhead warp scheduling</strong>, and it is one of the GPU's architectural superpowers.
+</div>
+
+<div class="key-concept">
+  <div class="key-concept-title">Why "Oversubscribe"?</div>
+  <p>This scheduling model is also the reason CUDA kernels work best when you launch <em>many more warps than there are execution units</em>. The hardware can only run a handful of warps per cycle, but having 48 warps resident per SM means that at any moment, several of them are likely to be ready. The waiting ones hide the latency of the active ones. This is called <strong>latency hiding through oversubscription</strong>, and it is why "just launch lots of threads" is good GPU advice.</p>
+</div>
+
+<!-- ================================================================== -->
+<div class="page-break"></div>
+<h2>10. A Tiny Cooperative Example You Can Trace in 30 Seconds</h2>
+
+<p>
+Let's put the whole mental model to work with the smallest possible cooperative kernel: a 4-thread block sums the array <code>[10, 20, 30, 40]</code> to produce 100. Each thread handles one element.
+</p>
+
+<pre>
+__global__ void sumFour(const float* input, float* output) {
+    __shared__ float s[4];            // one array of 4 floats, shared by all 4 threads
+    int tid = threadIdx.x;            // 0, 1, 2, or 3 — unique per thread
+
+    // STEP 1: each thread writes ONE value into its OWN slot of shared memory
+    s[tid] = input[tid];
+
+    // STEP 2: barrier — wait for all 4 writes to complete
+    __syncthreads();
+
+    // STEP 3: thread 0 reads ALL FOUR slots and sums them
+    if (tid == 0) {
+        float sum = s[0] + s[1] + s[2] + s[3];   // reads slots other threads wrote!
+        output[0] = sum;
+    }
+}
+</pre>
+
+<p>
+Now trace it line by line, being careful about <em>who writes what</em> and <em>who reads what</em>:
+</p>
+
+<table>
+  <tr><th>Instant</th><th>Thread 0</th><th>Thread 1</th><th>Thread 2</th><th>Thread 3</th><th>Shared array <code>s</code></th></tr>
+  <tr>
+    <td>Start</td>
+    <td>tid=0</td><td>tid=1</td><td>tid=2</td><td>tid=3</td>
+    <td style="font-family:'Courier New'">[?, ?, ?, ?]</td>
+  </tr>
+  <tr>
+    <td>After write</td>
+    <td style="background:#c8e6c8">writes s[0]=10</td>
+    <td style="background:#c8e6c8">writes s[1]=20</td>
+    <td style="background:#c8e6c8">writes s[2]=30</td>
+    <td style="background:#c8e6c8">writes s[3]=40</td>
+    <td style="font-family:'Courier New'">[10, 20, 30, 40]</td>
+  </tr>
+  <tr>
+    <td>__syncthreads()</td>
+    <td colspan="4" style="background:#fff8e1; text-align:center;">all four threads wait here until every write is done</td>
+    <td style="font-family:'Courier New'">[10, 20, 30, 40]</td>
+  </tr>
+  <tr>
+    <td>After read</td>
+    <td style="background:#bbdefb"><em>reads s[0], s[1], s[2], s[3]</em>, sums to 100, writes output</td>
+    <td>(does nothing)</td>
+    <td>(does nothing)</td>
+    <td>(does nothing)</td>
+    <td style="font-family:'Courier New'">[10, 20, 30, 40]</td>
+  </tr>
+</table>
+
+<p>
+Now look carefully at the "After read" row. <strong>Thread 0 read the values 20, 30, and 40 — values written by Threads 1, 2, and 3.</strong> That's what people mean when they say "threads cooperate" or "Thread 0 used the other threads' data."
+</p>
+
+<p>
+But notice: thread 0 did <em>not</em> contact thread 1. It did <em>not</em> peek at thread 1's registers. It did <em>not</em> send a message. All it did was read <code>s[1]</code> — a slot in the shared array that happened to have been written by thread 1 in the previous step. The shared array is the <em>only</em> medium. The barrier is the <em>only</em> synchronization.
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">If You Understand This 4-Thread Example, You Understand Tiling</div>
+  <p>The tiled matmul kernel is exactly the same pattern, scaled up:</p>
+  <ul>
+    <li>In tiling, 4 threads cooperatively write 4 values into a shared tile (<code>As</code>). Each writes its own slot.</li>
+    <li><code>__syncthreads()</code>.</li>
+    <li>Then each thread reads multiple slots — including slots written by other threads — to compute its own dot product.</li>
+  </ul>
+  <p>The only new thing in tiling is that the "cooperation" happens in a loop over many phases. The fundamental mechanism — write own slot → barrier → read any slot — is identical.</p>
+</div>
+
+<!-- ================================================================== -->
+<h2>11. Common Misconceptions, Cleared Up</h2>
+
+<div class="myth-box">
+  <div class="myth-title">Misconception 1</div>
+  "Thread A reaches out to Thread B and pulls data from Thread B's local variables."
+</div>
+<div class="truth-box">
+  <div class="truth-title">Truth</div>
+  Threads cannot see each other's registers, ever. All inter-thread communication within a block happens through <strong>shared memory</strong> (or, on newer GPUs, through warp-level intrinsics like <code>__shfl_sync</code>). The sender thread writes a slot; the receiver thread reads that slot. They are communicating through a shared mailbox, not point-to-point.
+</div>
+
+<div class="myth-box">
+  <div class="myth-title">Misconception 2</div>
+  "Blocks run one at a time, so block 0 can set up data for block 1."
+</div>
+<div class="truth-box">
+  <div class="truth-title">Truth</div>
+  Blocks run in an undefined order. Block 17 might run before block 0, and both might be running simultaneously on different SMs. You cannot rely on any ordering. If two blocks need to communicate, you must use global memory and separate kernel launches.
+</div>
+
+<div class="myth-box">
+  <div class="myth-title">Misconception 3</div>
+  "When the GPU runs out of execution units, it has to pause one warp and resume it later, saving all its state."
+</div>
+<div class="truth-box">
+  <div class="truth-title">Truth</div>
+  All resident warps on an SM have their complete register state alive on the SM simultaneously. Switching between them costs nothing. Warps that aren't ready (because they are waiting on memory or at a barrier) simply don't get picked. Warps that are ready get an instruction issued. Zero state moves.
+</div>
+
+<div class="myth-box">
+  <div class="myth-title">Misconception 4</div>
+  "A single thread can be split across cores to run faster."
+</div>
+<div class="truth-box">
+  <div class="truth-title">Truth</div>
+  A thread is the atomic unit of execution. It runs as part of its warp, which runs on a single SM. Threads don't move or split. If you want more parallelism, you launch more threads — not faster threads.
+</div>
+
+<div class="myth-box">
+  <div class="myth-title">Misconception 5</div>
+  "I should put as many values as possible into shared memory because it's fast."
+</div>
+<div class="truth-box">
+  <div class="truth-title">Truth</div>
+  Shared memory is a limited resource (48 KB to ~164 KB per SM, depending on the architecture). If a block uses too much of it, fewer blocks can run concurrently on an SM, hurting occupancy. Use shared memory only for data that is actually reused across threads.
+</div>
+
+<div class="myth-box">
+  <div class="myth-title">Misconception 6</div>
+  "__syncthreads() syncs all the threads in the kernel."
+</div>
+<div class="truth-box">
+  <div class="truth-title">Truth</div>
+  <code>__syncthreads()</code> only syncs threads <em>within one block</em>. There is no built-in intra-kernel barrier across all blocks. If you need every thread in the grid to finish before the next step starts, split your work into two kernel launches — the implicit boundary between kernels is the global barrier.
+</div>
+
+<!-- ================================================================== -->
+<h2>12. Now You're Ready</h2>
+
+<p>
+Here is the mental model you now have:
+</p>
+
+<ol>
+  <li>A kernel launch creates a <strong>grid of blocks of threads</strong>. There are millions of threads potentially.</li>
+  <li>Each <strong>thread</strong> has its own registers (the private stuff). It has a unique ID so it knows what data to work on.</li>
+  <li>Threads in the <strong>same block</strong> can cooperate: they share a small, fast <code>__shared__</code> scratchpad, and they can synchronize with <code>__syncthreads()</code>.</li>
+  <li>Threads in <strong>different blocks</strong> cannot talk directly. They each have their own private shared memory. For cross-block coordination you must use <strong>global memory</strong> and typically separate kernel launches.</li>
+  <li>When a thread wants data "from" another thread in its block, what really happens is: the other thread wrote a value into shared memory, there was a barrier, and now this thread reads that same shared memory slot.</li>
+  <li>The hardware groups threads into <strong>warps</strong> of 32. It schedules warps, not individual threads.</li>
+  <li>Many warps are resident on the same SM at once, with their full register state intact. When one warp stalls, the scheduler picks another ready warp — this is <strong>zero-overhead warp scheduling</strong>, not an OS context switch.</li>
+</ol>
+
+<div class="key-concept">
+  <div class="key-concept-title">The Single Sentence to Remember</div>
+  <p style="font-size: 13pt; text-align: center; margin: 10px 0;">
+    <strong>Threads never touch each other. They touch the same memory.</strong>
+  </p>
+  <p>If you keep that one sentence in mind, almost every surprising behavior in CUDA becomes predictable.</p>
+</div>
+
+<p>
+Now go back and read the three main chapters:
+</p>
+
+<ol>
+  <li><strong>Grid-Stride Loops</strong> — how a fixed number of threads can cover an arbitrarily large dataset, correctly.</li>
+  <li><strong>Tiled Shared-Memory Kernels</strong> — how to make the same kernel <em>fast</em> by reusing data in shared memory.</li>
+  <li><strong>The Worked Example on GT200</strong> — how both patterns combine in one real kernel, hand-traced on paper.</li>
+</ol>
+
+<p>
+You now have the vocabulary and the mental model. The cooperative loads, the barriers, the padding — none of it should feel mysterious anymore.
+</p>
+
+<hr style="margin-top: 50px; border: none; border-top: 2px solid #333;"/>
+<p style="text-align: center; font-style: italic; color: #666; margin-top: 20px;">
+End of Primer — CUDA Foundations
+</p>
+
+
+<div id="ai-disclaimer-banner" style="margin:60px auto 40px;padding-top:20px;border-top:1px solid #ddd;max-width:880px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10.5pt;color:#555;line-height:1.6">
+  <strong style="color:#333">About this page.</strong>
+  The prose here was <em>written by AI</em> (Claude). The questions, the learning path, and the decisions about what to include are mine &mdash; I wanted to learn CUDA properly and used AI to help me turn my scratch notes into readable chapters. Please cross-reference with authoritative sources (<a href="https://docs.nvidia.com/cuda/" style="color:#0066cc">NVIDIA CUDA Programming Guide</a>, the <em>Programming Massively Parallel Processors</em> textbook, etc.) before relying on anything here for production work.
+  &nbsp;&middot;&nbsp; <a href="index.html" style="color:#0066cc">&larr; CUDA chapter index</a>
+</div>
+</body>
+</html>

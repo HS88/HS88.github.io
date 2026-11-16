@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CUDA Learning Notes &mdash; Harmeet Singh</title>
+<style>
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.7;
+    color: #1a1a1a;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 30px;
+    background: #fff;
+  }
+  h1 {
+    font-size: 26pt;
+    margin: 0 0 8px;
+    color: #111;
+  }
+  .subtitle {
+    color: #666;
+    font-style: italic;
+    margin: 0 0 30px;
+    font-size: 12pt;
+  }
+  h2 {
+    font-size: 16pt;
+    margin-top: 40px;
+    margin-bottom: 15px;
+    color: #222;
+    border-left: 4px solid #0066cc;
+    padding-left: 12px;
+  }
+  .ai-notice {
+    margin: 60px 0 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10.5pt;
+    color: #555;
+    line-height: 1.6;
+  }
+  .ai-notice strong { color: #333; }
+  .ai-notice a { color: #0066cc; }
+  .chapter-list {
+    list-style: none;
+    counter-reset: chap;
+    padding: 0;
+    margin: 20px 0;
+  }
+  .chapter-list li {
+    counter-increment: chap;
+    background: #f7faff;
+    border: 1px solid #cfe0f0;
+    border-left: 4px solid #0066cc;
+    border-radius: 4px;
+    padding: 14px 20px 14px 70px;
+    margin-bottom: 12px;
+    position: relative;
+    transition: background 0.15s ease;
+  }
+  .chapter-list li:hover {
+    background: #eef5ff;
+  }
+  .chapter-list li::before {
+    content: counter(chap);
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #0066cc;
+    color: #fff;
+    text-align: center;
+    line-height: 40px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-weight: bold;
+    font-size: 15pt;
+  }
+  .chapter-list a {
+    font-weight: bold;
+    color: #0066cc;
+    text-decoration: none;
+    font-size: 13pt;
+  }
+  .chapter-list a:hover { text-decoration: underline; }
+  .chap-desc {
+    display: block;
+    margin-top: 4px;
+    font-size: 11pt;
+    color: #555;
+    line-height: 1.55;
+  }
+  .footer {
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+    text-align: center;
+    color: #888;
+    font-size: 10pt;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+  }
+  .footer a { color: #0066cc; text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>CUDA Learning Notes</h1>
+<p class="subtitle">A beginner-friendly walk from "what is a thread?" to "how do I pick launch dimensions on any GPU?"</p>
+
+<h2>Reading Order</h2>
+
+<p>Each chapter builds on the previous one. Start at the top and work down &mdash; by the end you'll have the mental model <em>and</em> a practical process for designing kernels.</p>
+
+<ol class="chapter-list">
+  <li>
+    <a href="01_cuda_foundations_primer.html">Foundations Primer &mdash; A Beginner's Mental Model</a>
+    <span class="chap-desc">What a thread, block, and grid actually are. Who can see which memory. How threads cooperate without touching each other. Warps and "zero-overhead scheduling." The myths every beginner holds.</span>
+  </li>
+  <li>
+    <a href="02_cuda_grid_stride_chapter.html">Grid-Stride Loops &mdash; Handling Data Bigger Than Your Threads</a>
+    <span class="chap-desc">The canonical pattern for processing arrays of any size with a fixed launch grid. Why you shouldn't launch one thread per element. Correctness first, then performance.</span>
+  </li>
+  <li>
+    <a href="03_cuda_tiled_memory_chapter.html">Tiled Shared Memory &mdash; Stop Hammering Global Memory</a>
+    <span class="chap-desc">The technique that cuts global-memory traffic by a factor of TILE. Cooperative loads, the two-barrier dance, boundary handling, and the arithmetic of why it works.</span>
+  </li>
+  <li>
+    <a href="04_cuda_combined_example_chapter.html">Worked Example &mdash; Tiled + Strided Matmul on GT200</a>
+    <span class="chap-desc">A hand-traced 5&times;4 &times; 4&times;7 matrix multiply on a real (vintage) GPU, with every edge case: partial tiles, zero padding, grid-stride wrap-around. The numbers you can verify with pencil and paper.</span>
+  </li>
+  <li>
+    <a href="05_cuda_tiled_matmul_animation.html">Interactive Animation &mdash; Watch It Run</a>
+    <span class="chap-desc">An HTML+SVG animation of the combined pattern with sliders for M, K, N, TILE, grid size, and speed. Click any output tile, step through phases, see the barrier synchronize threads in real time.</span>
+  </li>
+  <li>
+    <a href="06_cuda_launch_design_chapter.html">Launch Design Process &mdash; Picking Grid, Block, and Tile from Hardware</a>
+    <span class="chap-desc">A repeatable procedure for choosing dimensions from first principles. Four limits compete, the tightest wins. Includes a live calculator with 8 GPU presets from Tesla (2008) to Hopper (2022).</span>
+  </li>
+</ol>
+
+<div class="ai-notice">
+  <strong>About these chapters.</strong>
+  The prose here was <em>written by AI</em> (Claude). The questions, the learning path, and the decisions about what to include are mine &mdash; I wanted to learn CUDA properly and used AI to help me turn my scratch notes into readable chapters. Please cross-reference with authoritative sources (<a href="https://docs.nvidia.com/cuda/">NVIDIA CUDA Programming Guide</a>, the <em>Programming Massively Parallel Processors</em> textbook, etc.) before relying on anything here for production work.
+</div>
+
+<div class="footer">
+  &larr; <a href="/">Back to harmeet.me</a>
+  &nbsp;&middot;&nbsp;
+  <a href="https://github.com/HS88/HS88.github.io">Source on GitHub</a>
+</div>
+
+</body>
+</html>

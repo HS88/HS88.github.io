@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Interactive Animation: Tiled + Grid-Strided Matmul</title>
+<style>
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    margin: 0;
+    padding: 20px 30px;
+    background: #fafaf7;
+    color: #1a1a1a;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 22pt;
+    margin: 10px 0 20px;
+    color: #111;
+    border-bottom: 1px solid #999;
+    padding-bottom: 10px;
+  }
+  .lead {
+    font-size: 11pt;
+    color: #555;
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+  .panel {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 14px;
+  }
+  .panel h3 {
+    margin: 0 0 10px;
+    font-size: 11pt;
+    color: #0066cc;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'Courier New', monospace;
+  }
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px 24px;
+    align-items: center;
+  }
+  .ctrl {
+    display: flex;
+    flex-direction: column;
+    font-size: 10pt;
+  }
+  .ctrl label {
+    color: #555;
+    margin-bottom: 4px;
+    font-family: 'Courier New', monospace;
+  }
+  .ctrl label .val {
+    color: #0066cc;
+    font-weight: bold;
+    margin-left: 6px;
+  }
+  .ctrl input[type=range] {
+    width: 100%;
+  }
+  .buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: 'Courier New', monospace;
+    font-size: 10.5pt;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1.5px solid #0066cc;
+    color: #0066cc;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-weight: bold;
+  }
+  button:hover { background: #e8f4f8; }
+  button:active { background: #d0e8f4; }
+  button:disabled { color: #aaa; border-color: #ccc; cursor: default; }
+  button.primary { background: #0066cc; color: #fff; }
+  button.primary:hover { background: #0057b0; }
+  .status-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+  }
+  .status-item {
+    background: #f4f4f0;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border-left: 3px solid #0066cc;
+  }
+  .status-item .k {
+    color: #777;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .status-item .v {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #0066cc;
+  }
+  .viz {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+    overflow: auto;
+  }
+  svg { display: block; margin: 0 auto; }
+  .log {
+    background: #1e1e1e;
+    color: #c8e6c8;
+    font-family: 'Courier New', monospace;
+    font-size: 9.5pt;
+    padding: 10px 14px;
+    border-radius: 4px;
+    height: 110px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    border: 1px solid #333;
+  }
+  .log .t { color: #90caf9; }
+  .log .b { color: #ffcc80; }
+  .log .ok { color: #a5d6a7; }
+  .log .warn { color: #ef9a9a; }
+  .block-overview {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .block-grid {
+    display: grid;
+    gap: 2px;
+    padding: 4px;
+    background: #eee;
+    border-radius: 3px;
+  }
+  .block-cell {
+    width: 42px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    color: #333;
+    cursor: pointer;
+    border-radius: 2px;
+    border: 1.5px solid transparent;
+    transition: all 0.1s;
+  }
+  .block-cell:hover {
+    border-color: #333;
+  }
+  .block-cell.selected {
+    border-color: #000;
+    box-shadow: 0 0 0 2px #ffeb3b inset;
+  }
+  .block-cell.partial::after {
+    content: ' ½';
+    font-size: 7pt;
+    color: #e65100;
+  }
+  .legend {
+    font-size: 9pt;
+    color: #555;
+    font-family: 'Courier New', monospace;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .legend-swatch {
+    width: 14px;
+    height: 10px;
+    border: 1px solid #555;
+    border-radius: 2px;
+  }
+  .tip {
+    font-size: 9pt;
+    color: #777;
+    font-style: italic;
+  }
+  /* Animation helpers */
+  .pulse { animation: pulse 0.6s ease; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; transform: scale(1.08); }
+  }
+  .fade-in { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<h1>Interactive Animation: Tiled + Grid-Strided Matmul</h1>
+
+<p class="lead">
+Watch the combined pattern play out step by step. Adjust the matrix dimensions and tile size with the sliders. Pick any output tile from the block-ownership grid to focus on. Use <b>Play</b> to run automatically or <b>Step</b> to walk through one state at a time.
+</p>
+
+<!-- =============== CONTROLS =============== -->
+<div class="panel">
+  <h3>Configuration</h3>
+  <div class="controls">
+    <div class="ctrl">
+      <label>M (rows of A/C) <span class="val" id="valM">5</span></label>
+      <input type="range" id="sliderM" min="2" max="8" value="5">
+    </div>
+    <div class="ctrl">
+      <label>K (shared dim) <span class="val" id="valK">4</span></label>
+      <input type="range" id="sliderK" min="2" max="8" value="4">
+    </div>
+    <div class="ctrl">
+      <label>N (cols of B/C) <span class="val" id="valN">7</span></label>
+      <input type="range" id="sliderN" min="2" max="8" value="7">
+    </div>
+    <div class="ctrl">
+      <label>TILE size <span class="val" id="valTILE">2</span></label>
+      <input type="range" id="sliderTILE" min="1" max="4" value="2">
+    </div>
+    <div class="ctrl">
+      <label>gridDim.x (blocks) <span class="val" id="valGX">2</span></label>
+      <input type="range" id="sliderGX" min="1" max="4" value="2">
+    </div>
+    <div class="ctrl">
+      <label>gridDim.y (blocks) <span class="val" id="valGY">2</span></label>
+      <input type="range" id="sliderGY" min="1" max="4" value="2">
+    </div>
+    <div class="ctrl">
+      <label>Animation speed <span class="val" id="valSpeed">1.0×</span></label>
+      <input type="range" id="sliderSpeed" min="0.3" max="3" step="0.1" value="1.0">
+    </div>
+  </div>
+</div>
+
+<!-- =============== BLOCK OVERVIEW =============== -->
+<div class="panel">
+  <h3>Output Tiles — Click one to focus the animation</h3>
+  <div class="block-overview">
+    <div id="block-grid-container"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-swatch" style="background:#a5d6a7"></div> Block (0,0)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#90caf9"></div> Block (1,0)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#ffcc80"></div> Block (0,1)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#ce93d8"></div> Block (1,1)</div>
+      <div class="legend-item"><div class="legend-swatch" style="background:#f0e0f6"></div> Block (2,0)/(2,1)/etc</div>
+      <div class="tip" style="margin-top:8px;">Each tile is colored by which block owns it (determined by the block-level grid-stride).<br/>Tiles labeled "½" or "¼" are partial — they contain padded cells.</div>
+    </div>
+  </div>
+</div>
+
+<!-- =============== PLAYBACK CONTROLS =============== -->
+<div class="panel">
+  <h3>Playback</h3>
+  <div class="buttons">
+    <button id="btnPlay" class="primary">▶ Play</button>
+    <button id="btnPause">⏸ Pause</button>
+    <button id="btnStep">⏭ Step</button>
+    <button id="btnReset">⟲ Reset to this tile</button>
+    <span style="color:#555; font-family:'Courier New',monospace; font-size:10pt; margin-left:auto;">
+      State <b id="stepIdx">0</b> of <b id="stepTotal">0</b>
+    </span>
+  </div>
+</div>
+
+<!-- =============== STATUS =============== -->
+<div class="status-bar">
+  <div class="status-item"><div class="k">Block</div><div class="v" id="statBlock">—</div></div>
+  <div class="status-item"><div class="k">Output tile</div><div class="v" id="statTile">—</div></div>
+  <div class="status-item"><div class="k">Phase</div><div class="v" id="statPhase">—</div></div>
+  <div class="status-item"><div class="k">Current step</div><div class="v" id="statStep">—</div></div>
+</div>
+
+<!-- =============== MAIN VIZ =============== -->
+<div class="viz" style="margin-top:14px;">
+  <svg id="mainSvg" width="1140" height="520" viewBox="0 0 1140 520"></svg>
+</div>
+
+<!-- =============== LOG =============== -->
+<div class="panel" style="margin-top:14px;">
+  <h3>Event log</h3>
+  <div id="log" class="log"></div>
+</div>
+
+<script>
+'use strict';
+
+// =============================================================
+// CORE: Config + data generators
+// =============================================================
+const State = {
+  M: 5, K: 4, N: 7, TILE: 2, gridX: 2, gridY: 2,
+  focalTile: {ty: 2, tx: 3},     // which output tile the animation focuses on
+  speed: 1.0,
+  playing: false,
+  timeline: [],
+  stepIdx: 0,
+  animTimer: null,
+  C: null,       // the computed C matrix (filled as tiles complete)
+};
+
+function recomputeDerived() {
+  State.rowTiles = Math.ceil(State.M / State.TILE);
+  State.colTiles = Math.ceil(State.N / State.TILE);
+  State.numPhases = Math.ceil(State.K / State.TILE);
+  // clamp focal tile
+  if (State.focalTile.ty >= State.rowTiles) State.focalTile.ty = State.rowTiles - 1;
+  if (State.focalTile.tx >= State.colTiles) State.focalTile.tx = State.colTiles - 1;
+  // clamp grid dims against tile counts (visual sanity)
+  if (State.gridY > State.rowTiles) State.gridY = State.rowTiles;
+  if (State.gridX > State.colTiles) State.gridX = State.colTiles;
+}
+
+function generateA() {
+  const A = [];
+  for (let r = 0; r < State.M; r++) {
+    const row = [];
+    for (let k = 0; k < State.K; k++) row.push(r * State.K + k + 1);
+    A.push(row);
+  }
+  return A;
+}
+function generateB() {
+  const B = [];
+  for (let k = 0; k < State.K; k++) {
+    const row = [];
+    for (let c = 0; c < State.N; c++) row.push(k + 1);
+    B.push(row);
+  }
+  return B;
+}
+function cpuMatmul(A, B) {
+  const C = [];
+  for (let r = 0; r < State.M; r++) {
+    const row = [];
+    for (let c = 0; c < State.N; c++) {
+      let s = 0;
+      for (let k = 0; k < State.K; k++) s += A[r][k] * B[k][c];
+      row.push(s);
+    }
+    C.push(row);
+  }
+  return C;
+}
+
+// Which block owns tile (ty, tx)?
+function ownerBlock(ty, tx) {
+  return { bx: tx % State.gridX, by: ty % State.gridY };
+}
+
+// Tiles processed by block (bx, by), in order of grid-stride
+function blockTiles(bx, by) {
+  const out = [];
+  for (let ty = by; ty < State.rowTiles; ty += State.gridY) {
+    for (let tx = bx; tx < State.colTiles; tx += State.gridX) {
+      out.push({ty, tx});
+    }
+  }
+  return out;
+}
+
+// Which "pass" is tile (ty, tx) for its owning block?
+function tilePass(ty, tx) {
+  const {bx, by} = ownerBlock(ty, tx);
+  const tiles = blockTiles(bx, by);
+  return tiles.findIndex(t => t.ty === ty && t.tx === tx) + 1;
+}
+
+// =============================================================
+// Timeline generation — just for the focal tile
+// =============================================================
+function generateTimeline(A, B) {
+  const {ty, tx} = State.focalTile;
+  const {bx, by} = ownerBlock(ty, tx);
+  const T = State.TILE;
+  const steps = [];
+
+  const outRow0 = ty * T;
+  const outCol0 = tx * T;
+
+  steps.push({
+    type: 'TILE_START', block: {bx, by}, tile: {ty, tx},
+    log: `Block (${bx},${by}) begins output tile (${ty},${tx}). outRow=${outRow0}, outCol=${outCol0}.`,
+  });
+
+  // Fresh accumulators for every thread (ty_, tx_) in this tile
+  let sums = Array.from({length: T}, () => Array(T).fill(0));
+
+  for (let p = 0; p < State.numPhases; p++) {
+    const kBase = p * T;
+
+    // ===== LOAD_A =====
+    const As = Array.from({length: T}, () => Array(T).fill(0));
+    const AsSource = Array.from({length: T}, () => Array(T).fill(null));
+    for (let ty_ = 0; ty_ < T; ty_++) {
+      for (let tx_ = 0; tx_ < T; tx_++) {
+        const row = outRow0 + ty_;
+        const kCol = kBase + tx_;
+        const valid = (row < State.M && kCol < State.K);
+        As[ty_][tx_] = valid ? A[row][kCol] : 0;
+        AsSource[ty_][tx_] = valid ? {r: row, c: kCol} : null;
+      }
+    }
+    steps.push({
+      type: 'LOAD_A', phase: p, As, AsSource,
+      log: `Phase ${p}: 4 threads cooperatively load A-tile from rows [${outRow0}..${outRow0+T-1}], cols [${kBase}..${kBase+T-1}]`,
+    });
+
+    // ===== LOAD_B =====
+    const Bs = Array.from({length: T}, () => Array(T).fill(0));
+    const BsSource = Array.from({length: T}, () => Array(T).fill(null));
+    for (let ty_ = 0; ty_ < T; ty_++) {
+      for (let tx_ = 0; tx_ < T; tx_++) {
+        const kRow = kBase + ty_;
+        const col = outCol0 + tx_;
+        const valid = (kRow < State.K && col < State.N);
+        Bs[ty_][tx_] = valid ? B[kRow][col] : 0;
+        BsSource[ty_][tx_] = valid ? {r: kRow, c: col} : null;
+      }
+    }
+    steps.push({
+      type: 'LOAD_B', phase: p, As, Bs, AsSource, BsSource,
+      log: `Phase ${p}: 4 threads cooperatively load B-tile from rows [${kBase}..${kBase+T-1}], cols [${outCol0}..${outCol0+T-1}]`,
+    });
+
+    // ===== SYNC 1 =====
+    steps.push({
+      type: 'SYNC_1', phase: p, As, Bs, AsSource, BsSource,
+      log: `__syncthreads() — wait for all 4 cooperative loads to complete`,
+    });
+
+    // ===== COMPUTE =====
+    const sumsBefore = sums.map(r => r.slice());
+    const sumsAfter = sums.map(r => r.slice());
+    const contributions = Array.from({length: T}, () => Array(T).fill(0));
+    for (let ty_ = 0; ty_ < T; ty_++) {
+      for (let tx_ = 0; tx_ < T; tx_++) {
+        let c = 0;
+        for (let k = 0; k < T; k++) c += As[ty_][k] * Bs[k][tx_];
+        contributions[ty_][tx_] = c;
+        sumsAfter[ty_][tx_] = sumsBefore[ty_][tx_] + c;
+      }
+    }
+    sums = sumsAfter;
+    steps.push({
+      type: 'COMPUTE', phase: p, As, Bs, AsSource, BsSource,
+      sumsBefore, sumsAfter, contributions,
+      log: `Phase ${p}: each thread does ${T} multiply-adds from shared memory. Running sums updated.`,
+    });
+
+    // ===== SYNC 2 =====
+    steps.push({
+      type: 'SYNC_2', phase: p, As, Bs, AsSource, BsSource, sumsAfter,
+      log: `__syncthreads() — safe to overwrite shared memory with next phase's data`,
+    });
+  }
+
+  // ===== WRITE_BACK =====
+  const writes = [];
+  for (let ty_ = 0; ty_ < T; ty_++) {
+    for (let tx_ = 0; tx_ < T; tx_++) {
+      const row = outRow0 + ty_;
+      const col = outCol0 + tx_;
+      const valid = (row < State.M && col < State.N);
+      writes.push({ty_, tx_, row, col, valid, val: sums[ty_][tx_]});
+    }
+  }
+  steps.push({
+    type: 'WRITE', writes, sumsAfter: sums,
+    log: `Guarded write-back: C[row,col] = sum for in-bounds threads; others skip.`,
+  });
+
+  steps.push({type: 'DONE', sums, log: 'Output tile complete.'});
+
+  return steps;
+}
+
+// =============================================================
+// Rendering
+// =============================================================
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('mainSvg');
+
+// Layout constants
+const LAYOUT = {
+  cellW: 32, cellH: 26,
+  aX: 30,  aY: 70,
+  bX: 290, bY: 70,
+  cX: 580, cY: 70,
+  sharedX: 870, sharedY: 70,
+  sumY: 310,
+};
+
+function el(tag, attrs, children) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const k in (attrs || {})) e.setAttribute(k, attrs[k]);
+  if (children) for (const c of children) e.appendChild(c);
+  return e;
+}
+function text(x, y, str, attrs) {
+  const t = el('text', Object.assign({x, y}, attrs || {}));
+  t.textContent = str;
+  return t;
+}
+function rect(x, y, w, h, attrs) {
+  return el('rect', Object.assign({x, y, width: w, height: h}, attrs || {}));
+}
+
+function clearSvg() { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+
+function drawMatrix(originX, originY, data, title, color, highlight) {
+  const T = State.TILE;
+  const g = el('g');
+  const rows = data.length, cols = data[0].length;
+
+  // Title
+  g.appendChild(text(originX + cols * LAYOUT.cellW / 2, originY - 18, title,
+    {'text-anchor': 'middle', 'font-size': 12, 'font-weight': 'bold', fill: color}));
+
+  // Cells
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let fill = '#fff';
+      if (highlight) {
+        const isHl = highlight.some(h =>
+          r >= h.r0 && r < h.r0 + h.rh && c >= h.c0 && c < h.c0 + h.cw);
+        if (isHl) fill = color + '33';   // transparent tint
+      }
+      g.appendChild(rect(originX + c * LAYOUT.cellW, originY + r * LAYOUT.cellH,
+        LAYOUT.cellW, LAYOUT.cellH, {fill, stroke: color, 'stroke-width': 1}));
+      g.appendChild(text(
+        originX + c * LAYOUT.cellW + LAYOUT.cellW/2,
+        originY + r * LAYOUT.cellH + LAYOUT.cellH/2 + 4,
+        data[r][c] == null ? '' : String(data[r][c]),
+        {'text-anchor': 'middle', 'font-size': 10, 'font-family': 'Courier New'}
+      ));
+    }
+  }
+
+  // Thick tile borders overlay
+  for (let ty = 0; ty < Math.ceil(rows / T); ty++) {
+    for (let tx = 0; tx < Math.ceil(cols / T); tx++) {
+      const x0 = originX + tx * T * LAYOUT.cellW;
+      const y0 = originY + ty * T * LAYOUT.cellH;
+      const w = Math.min(T, cols - tx * T) * LAYOUT.cellW;
+      const h = Math.min(T, rows - ty * T) * LAYOUT.cellH;
+      g.appendChild(rect(x0, y0, w, h, {
+        fill: 'none', stroke: '#444', 'stroke-width': 1.5,
+        'stroke-dasharray': (w < T * LAYOUT.cellW || h < T * LAYOUT.cellH) ? '4,2' : 'none'
+      }));
+    }
+  }
+
+  // Row/col axis labels
+  for (let r = 0; r < rows; r++) {
+    g.appendChild(text(originX - 8, originY + r * LAYOUT.cellH + LAYOUT.cellH/2 + 3,
+      String(r), {'text-anchor': 'end', 'font-size': 8, fill: '#777', 'font-family': 'Courier New'}));
+  }
+  for (let c = 0; c < cols; c++) {
+    g.appendChild(text(originX + c * LAYOUT.cellW + LAYOUT.cellW/2, originY - 4,
+      String(c), {'text-anchor': 'middle', 'font-size': 8, fill: '#777', 'font-family': 'Courier New'}));
+  }
+
+  return g;
+}
+
+function drawSharedTile(originX, originY, label, data, color, dimmed) {
+  const T = State.TILE;
+  const g = el('g');
+  g.appendChild(text(originX + T * LAYOUT.cellW / 2, originY - 6, label,
+    {'text-anchor': 'middle', 'font-size': 11, 'font-weight': 'bold', fill: color,
+     'font-family': 'Courier New'}));
+  for (let r = 0; r < T; r++) {
+    for (let c = 0; c < T; c++) {
+      const v = data ? data[r][c] : null;
+      const fillBase = dimmed ? '#f0f0f0' : (v === null ? '#fff' : color + '22');
+      g.appendChild(rect(originX + c * LAYOUT.cellW, originY + r * LAYOUT.cellH,
+        LAYOUT.cellW, LAYOUT.cellH, {fill: fillBase, stroke: color, 'stroke-width': 1.5}));
+      g.appendChild(text(
+        originX + c * LAYOUT.cellW + LAYOUT.cellW/2,
+        originY + r * LAYOUT.cellH + LAYOUT.cellH/2 + 4,
+        v == null ? '·' : String(v),
+        {'text-anchor': 'middle', 'font-size': 10, 'font-family': 'Courier New',
+         fill: v === 0 ? '#c62828' : '#333',
+         'font-weight': v === 0 ? 'bold' : 'normal'}
+      ));
+    }
+  }
+  return g;
+}
+
+function drawArrow(x1, y1, x2, y2, color, isPadding) {
+  const dash = isPadding ? '3,3' : '0';
+  return el('line', {
+    x1, y1, x2, y2, stroke: color, 'stroke-width': 1.2,
+    'stroke-dasharray': dash, 'marker-end': 'url(#arrow)',
+    opacity: 0.7
+  });
+}
+
+function drawBarrier(active) {
+  const g = el('g');
+  g.appendChild(rect(30, 440, 810, 50, {
+    fill: active ? '#fff8e1' : '#fafafa',
+    stroke: active ? '#f0a000' : '#ccc',
+    'stroke-width': active ? 3 : 1, rx: 6,
+    'class': active ? 'pulse' : ''
+  }));
+  g.appendChild(text(435, 472, active ? '__syncthreads()  —  ALL 4 THREADS IN THIS BLOCK PAUSE HERE' : '(no barrier active)',
+    {'text-anchor': 'middle', 'font-size': 13,
+     'font-weight': 'bold', fill: active ? '#b37700' : '#aaa',
+     'font-family': 'Courier New'}));
+  return g;
+}
+
+function drawSumPanel(originX, originY, sumsBefore, sumsAfter, contributions) {
+  const T = State.TILE;
+  const g = el('g');
+  g.appendChild(text(originX + 100, originY - 4, 'Running sum per thread (ty, tx)',
+    {'text-anchor': 'middle', 'font-size': 11, 'font-weight': 'bold', fill: '#333',
+     'font-family': 'Courier New'}));
+  for (let ty_ = 0; ty_ < T; ty_++) {
+    for (let tx_ = 0; tx_ < T; tx_++) {
+      const x = originX + tx_ * 95;
+      const y = originY + ty_ * 55;
+      const outRow = State.focalTile.ty * T + ty_;
+      const outCol = State.focalTile.tx * T + tx_;
+      const inBounds = outRow < State.M && outCol < State.N;
+      const label = `T(${ty_},${tx_}) → C[${outRow},${outCol}]`;
+      g.appendChild(rect(x, y, 90, 50, {
+        fill: inBounds ? '#e8f5e9' : '#ffebee',
+        stroke: inBounds ? '#2e7d32' : '#c62828',
+        'stroke-width': 1.5, rx: 4
+      }));
+      g.appendChild(text(x + 45, y + 14, label,
+        {'text-anchor': 'middle', 'font-size': 8,
+         fill: inBounds ? '#1b5e20' : '#b71c1c',
+         'font-family': 'Courier New', 'font-weight': 'bold'}));
+
+      if (sumsAfter) {
+        const before = sumsBefore ? sumsBefore[ty_][tx_] : null;
+        const after = sumsAfter[ty_][tx_];
+        const contrib = contributions ? contributions[ty_][tx_] : null;
+        let line1, line2;
+        if (contrib != null && before != null) {
+          line1 = `${before} + ${contrib}`;
+          line2 = `= ${after}`;
+        } else {
+          line1 = `sum = ${after}`;
+          line2 = '';
+        }
+        g.appendChild(text(x + 45, y + 30, line1,
+          {'text-anchor': 'middle', 'font-size': 9.5, fill: '#333',
+           'font-family': 'Courier New'}));
+        g.appendChild(text(x + 45, y + 43, line2,
+          {'text-anchor': 'middle', 'font-size': 10, fill: '#2e7d32',
+           'font-family': 'Courier New', 'font-weight': 'bold'}));
+      } else {
+        g.appendChild(text(x + 45, y + 38, 'sum = 0',
+          {'text-anchor': 'middle', 'font-size': 10, fill: '#777',
+           'font-family': 'Courier New'}));
+      }
+    }
+  }
+  return g;
+}
+
+function addArrowMarker() {
+  const defs = el('defs');
+  const marker = el('marker', {
+    id: 'arrow', markerWidth: 8, markerHeight: 6, refX: 7, refY: 3,
+    orient: 'auto'
+  });
+  marker.appendChild(el('polygon', {points: '0 0, 8 3, 0 6', fill: '#2e7d32'}));
+  defs.appendChild(marker);
+  const marker2 = el('marker', {
+    id: 'arrow-red', markerWidth: 8, markerHeight: 6, refX: 7, refY: 3,
+    orient: 'auto'
+  });
+  marker2.appendChild(el('polygon', {points: '0 0, 8 3, 0 6', fill: '#c62828'}));
+  defs.appendChild(marker2);
+  return defs;
+}
+
+// Highlight rectangles for this focal tile
+function focalHighlights(step) {
+  const T = State.TILE;
+  const {ty, tx} = State.focalTile;
+  const A_h = [], B_h = [], C_h = [];
+  // In C, always highlight the focal tile
+  C_h.push({r0: ty * T, c0: tx * T, rh: T, cw: T});
+
+  if (step && (step.type === 'LOAD_A' || step.type === 'LOAD_B' ||
+               step.type === 'SYNC_1' || step.type === 'COMPUTE' || step.type === 'SYNC_2')) {
+    const phase = step.phase;
+    A_h.push({r0: ty * T, c0: phase * T, rh: T, cw: T});
+    B_h.push({r0: phase * T, c0: tx * T, rh: T, cw: T});
+  }
+  return {A_h, B_h, C_h};
+}
+
+function render() {
+  clearSvg();
+  svg.appendChild(addArrowMarker());
+
+  const step = State.timeline[State.stepIdx] || {};
+  const {ty, tx} = State.focalTile;
+  const T = State.TILE;
+  const hl = focalHighlights(step);
+
+  // Matrices
+  svg.appendChild(drawMatrix(LAYOUT.aX, LAYOUT.aY, State.A,
+    `A (${State.M}×${State.K})`, '#1565c0', hl.A_h));
+  svg.appendChild(drawMatrix(LAYOUT.bX, LAYOUT.bY, State.B,
+    `B (${State.K}×${State.N})`, '#c62828', hl.B_h));
+  svg.appendChild(drawMatrix(LAYOUT.cX, LAYOUT.cY, State.C,
+    `C (${State.M}×${State.N})`, '#2e7d32', hl.C_h));
+
+  // Shared memory
+  const showAs = step.As || null;
+  const showBs = step.Bs || null;
+  const dimmedA = !(step.type === 'LOAD_A' || step.type === 'LOAD_B' ||
+                   step.type === 'SYNC_1' || step.type === 'COMPUTE' || step.type === 'SYNC_2');
+  const dimmedB = !(step.type === 'LOAD_B' || step.type === 'SYNC_1' ||
+                   step.type === 'COMPUTE' || step.type === 'SYNC_2');
+
+  svg.appendChild(drawSharedTile(LAYOUT.sharedX, LAYOUT.sharedY, 'As[' + T + '][' + T + ']',
+    showAs, '#1565c0', dimmedA));
+  svg.appendChild(drawSharedTile(LAYOUT.sharedX, LAYOUT.sharedY + 100, 'Bs[' + T + '][' + T + ']',
+    showBs, '#c62828', dimmedB));
+
+  // Arrows from A/B → shared, during load steps
+  if (step.type === 'LOAD_A' && step.AsSource) {
+    for (let r = 0; r < T; r++) {
+      for (let c = 0; c < T; c++) {
+        const src = step.AsSource[r][c];
+        const x2 = LAYOUT.sharedX + c * LAYOUT.cellW + LAYOUT.cellW/2;
+        const y2 = LAYOUT.sharedY + r * LAYOUT.cellH + LAYOUT.cellH/2;
+        if (src) {
+          const x1 = LAYOUT.aX + src.c * LAYOUT.cellW + LAYOUT.cellW/2;
+          const y1 = LAYOUT.aY + src.r * LAYOUT.cellH + LAYOUT.cellH/2;
+          svg.appendChild(drawArrow(x1, y1, x2, y2, '#2e7d32', false));
+        } else {
+          // padding marker
+          svg.appendChild(text(x2, y2 - 20, 'pad→0',
+            {'text-anchor': 'middle', 'font-size': 8, fill: '#c62828', 'font-family': 'Courier New'}));
+        }
+      }
+    }
+  }
+  if (step.type === 'LOAD_B' && step.BsSource) {
+    for (let r = 0; r < T; r++) {
+      for (let c = 0; c < T; c++) {
+        const src = step.BsSource[r][c];
+        const x2 = LAYOUT.sharedX + c * LAYOUT.cellW + LAYOUT.cellW/2;
+        const y2 = LAYOUT.sharedY + 100 + r * LAYOUT.cellH + LAYOUT.cellH/2;
+        if (src) {
+          const x1 = LAYOUT.bX + src.c * LAYOUT.cellW + LAYOUT.cellW/2;
+          const y1 = LAYOUT.bY + src.r * LAYOUT.cellH + LAYOUT.cellH/2;
+          svg.appendChild(drawArrow(x1, y1, x2, y2, '#2e7d32', false));
+        } else {
+          svg.appendChild(text(x2, y2 - 20, 'pad→0',
+            {'text-anchor': 'middle', 'font-size': 8, fill: '#c62828', 'font-family': 'Courier New'}));
+        }
+      }
+    }
+  }
+  if (step.type === 'WRITE' && step.writes) {
+    for (const w of step.writes) {
+      if (!w.valid) continue;
+      const x1 = LAYOUT.sumY + 0;   // sum panel is further; use heuristic
+      // Draw arrow from sum panel to C cell
+      const x2 = LAYOUT.cX + w.col * LAYOUT.cellW + LAYOUT.cellW/2;
+      const y2 = LAYOUT.cY + w.row * LAYOUT.cellH + LAYOUT.cellH/2;
+      const sumX = 30 + w.tx_ * 95 + 45;
+      const sumY = LAYOUT.sumY + w.ty_ * 55 + 25;
+      svg.appendChild(drawArrow(sumX, sumY, x2, y2, '#2e7d32', false));
+    }
+  }
+
+  // Barrier bar
+  const barrierActive = step.type === 'SYNC_1' || step.type === 'SYNC_2';
+  svg.appendChild(drawBarrier(barrierActive));
+
+  // Sum panel
+  let sumsBefore = null, sumsAfter = null, contributions = null;
+  if (step.type === 'COMPUTE') {
+    sumsBefore = step.sumsBefore;
+    sumsAfter = step.sumsAfter;
+    contributions = step.contributions;
+  } else if (step.sumsAfter) {
+    sumsAfter = step.sumsAfter;
+  }
+  svg.appendChild(drawSumPanel(30, LAYOUT.sumY, sumsBefore, sumsAfter, contributions));
+
+  // Update status bar
+  const block = step.block || ownerBlock(State.focalTile.ty, State.focalTile.tx);
+  document.getElementById('statBlock').textContent = `(${block.bx}, ${block.by})`;
+  document.getElementById('statTile').textContent = `(${State.focalTile.ty}, ${State.focalTile.tx})`;
+  const phaseDisplay = (step.phase != null)
+    ? `${step.phase + 1} of ${State.numPhases}`
+    : '—';
+  document.getElementById('statPhase').textContent = phaseDisplay;
+  document.getElementById('statStep').textContent = step.type || '—';
+  document.getElementById('stepIdx').textContent = State.stepIdx + 1;
+  document.getElementById('stepTotal').textContent = State.timeline.length;
+}
+
+// =============================================================
+// Block overview grid (clickable tile picker)
+// =============================================================
+function renderBlockGrid() {
+  const container = document.getElementById('block-grid-container');
+  container.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'block-grid';
+  grid.style.gridTemplateColumns = `repeat(${State.colTiles}, 42px)`;
+  const blockColors = ['#a5d6a7', '#90caf9', '#ffcc80', '#ce93d8',
+                       '#f0e0f6', '#d7ccc8', '#b0bec5', '#ffe0b2'];
+  for (let ty = 0; ty < State.rowTiles; ty++) {
+    for (let tx = 0; tx < State.colTiles; tx++) {
+      const {bx, by} = ownerBlock(ty, tx);
+      const bi = by * State.gridX + bx;
+      const cell = document.createElement('div');
+      cell.className = 'block-cell';
+      cell.style.background = blockColors[bi % blockColors.length];
+      const outRowMax = Math.min((ty + 1) * State.TILE - 1, State.M - 1);
+      const outColMax = Math.min((tx + 1) * State.TILE - 1, State.N - 1);
+      const partial = outRowMax < (ty + 1) * State.TILE - 1 || outColMax < (tx + 1) * State.TILE - 1;
+      if (partial) cell.classList.add('partial');
+      if (ty === State.focalTile.ty && tx === State.focalTile.tx) cell.classList.add('selected');
+      cell.textContent = `(${ty},${tx})`;
+      cell.title = `Tile (${ty},${tx}) · Block (${bx},${by}) · pass ${tilePass(ty, tx)}`;
+      cell.addEventListener('click', () => {
+        State.focalTile = {ty, tx};
+        rebuildTimeline();
+        renderBlockGrid();
+      });
+      grid.appendChild(cell);
+    }
+  }
+  container.appendChild(grid);
+}
+
+// =============================================================
+// Playback / event logging
+// =============================================================
+function logMsg(step) {
+  if (!step) return;
+  const lines = [];
+  const prefix = {
+    'TILE_START': '[START]', 'LOAD_A': '[LOAD]', 'LOAD_B': '[LOAD]',
+    'SYNC_1': '[SYNC]', 'COMPUTE': '[CALC]', 'SYNC_2': '[SYNC]',
+    'WRITE': '[WRITE]', 'DONE': '[DONE]'
+  }[step.type] || '';
+  const color = {
+    '[START]': 't', '[LOAD]': '', '[SYNC]': 'b',
+    '[CALC]': 'ok', '[WRITE]': 'ok', '[DONE]': 'ok'
+  }[prefix] || '';
+  const logEl = document.getElementById('log');
+  const span = document.createElement('span');
+  span.innerHTML = `<span class="${color}">${prefix}</span> ${step.log}\n`;
+  logEl.appendChild(span);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function clearLog() {
+  document.getElementById('log').innerHTML = '';
+}
+
+function rebuildTimeline() {
+  recomputeDerived();
+  State.A = generateA();
+  State.B = generateB();
+  const trueC = cpuMatmul(State.A, State.B);
+  // C starts empty; it will fill as the animation "writes" cells
+  State.C = Array.from({length: State.M}, () => Array(State.N).fill(null));
+  State.trueC = trueC;
+  State.timeline = generateTimeline(State.A, State.B);
+  State.stepIdx = 0;
+  stopPlayback();
+  clearLog();
+  render();
+  logMsg(State.timeline[0]);
+}
+
+function doStep() {
+  const current = State.timeline[State.stepIdx];
+  // If we're on a WRITE step, actually commit the writes to C
+  if (current && current.type === 'WRITE') {
+    for (const w of current.writes) if (w.valid) State.C[w.row][w.col] = w.val;
+  }
+  if (State.stepIdx < State.timeline.length - 1) {
+    State.stepIdx++;
+    render();
+    logMsg(State.timeline[State.stepIdx]);
+  } else {
+    stopPlayback();
+  }
+}
+
+function play() {
+  if (State.playing) return;
+  State.playing = true;
+  tick();
+}
+function stopPlayback() {
+  State.playing = false;
+  if (State.animTimer) { clearTimeout(State.animTimer); State.animTimer = null; }
+}
+function tick() {
+  if (!State.playing) return;
+  doStep();
+  if (State.stepIdx >= State.timeline.length - 1) {
+    State.playing = false;
+    return;
+  }
+  const delay = 1200 / State.speed;
+  State.animTimer = setTimeout(tick, delay);
+}
+
+// =============================================================
+// Wire-up
+// =============================================================
+function setupSliders() {
+  const bindSlider = (id, prop, valId) => {
+    const s = document.getElementById(id);
+    s.addEventListener('input', () => {
+      State[prop] = parseFloat(s.value);
+      if (valId === 'valSpeed') {
+        document.getElementById(valId).textContent = State[prop].toFixed(1) + '×';
+      } else {
+        document.getElementById(valId).textContent = s.value;
+      }
+      if (prop !== 'speed') { rebuildTimeline(); renderBlockGrid(); }
+    });
+  };
+  bindSlider('sliderM', 'M', 'valM');
+  bindSlider('sliderK', 'K', 'valK');
+  bindSlider('sliderN', 'N', 'valN');
+  bindSlider('sliderTILE', 'TILE', 'valTILE');
+  bindSlider('sliderGX', 'gridX', 'valGX');
+  bindSlider('sliderGY', 'gridY', 'valGY');
+  bindSlider('sliderSpeed', 'speed', 'valSpeed');
+}
+document.getElementById('btnPlay').addEventListener('click', play);
+document.getElementById('btnPause').addEventListener('click', stopPlayback);
+document.getElementById('btnStep').addEventListener('click', () => { stopPlayback(); doStep(); });
+document.getElementById('btnReset').addEventListener('click', () => {
+  stopPlayback();
+  State.stepIdx = 0;
+  // Re-clear C for just this tile's writes (easier: rebuild whole C)
+  State.C = Array.from({length: State.M}, () => Array(State.N).fill(null));
+  clearLog();
+  render();
+  logMsg(State.timeline[0]);
+});
+
+setupSliders();
+rebuildTimeline();
+renderBlockGrid();
+</script>
+
+
+<div id="ai-disclaimer-banner" style="margin:60px auto 40px;padding-top:20px;border-top:1px solid #ddd;max-width:880px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10.5pt;color:#555;line-height:1.6">
+  <strong style="color:#333">About this page.</strong>
+  The prose here was <em>written by AI</em> (Claude). The questions, the learning path, and the decisions about what to include are mine &mdash; I wanted to learn CUDA properly and used AI to help me turn my scratch notes into readable chapters. Please cross-reference with authoritative sources (<a href="https://docs.nvidia.com/cuda/" style="color:#0066cc">NVIDIA CUDA Programming Guide</a>, the <em>Programming Massively Parallel Processors</em> textbook, etc.) before relying on anything here for production work.
+  &nbsp;&middot;&nbsp; <a href="index.html" style="color:#0066cc">&larr; CUDA chapter index</a>
+</div>
+</body>
+</html>

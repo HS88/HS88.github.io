@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Designing Launch Dimensions: Grid, Block, and Tile Size from the Hardware Up</title>
+<style>
+  @page { size: A4; margin: 2.5cm 2cm; }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.7;
+    color: #1a1a1a;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 40px 30px;
+    background: #fff;
+  }
+  h1 {
+    font-size: 26pt;
+    margin-top: 5px;
+    margin-bottom: 30px;
+    color: #111;
+    border-bottom: 1px solid #999;
+    padding-bottom: 15px;
+  }
+  h2 {
+    font-size: 18pt;
+    margin-top: 40px;
+    margin-bottom: 15px;
+    color: #222;
+    border-left: 4px solid #0066cc;
+    padding-left: 12px;
+  }
+  h3 {
+    font-size: 14pt;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  p { text-align: justify; margin-bottom: 12px; }
+  pre {
+    background: #f5f5f0;
+    border: 1px solid #ddd;
+    border-left: 4px solid #0066cc;
+    padding: 15px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: 3px;
+  }
+  code {
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    background: #f0f0eb;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .key-concept {
+    background: #e8f4f8;
+    border: 2px solid #0066cc;
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin: 25px 0;
+    page-break-inside: avoid;
+  }
+  .key-concept-title {
+    font-weight: bold;
+    color: #0066cc;
+    font-size: 11pt;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .note-box {
+    background: #fff8e1;
+    border: 1px solid #f0c040;
+    border-left: 4px solid #f0a000;
+    border-radius: 3px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    page-break-inside: avoid;
+  }
+  .note-box-title {
+    font-weight: bold;
+    color: #b37700;
+    margin-bottom: 5px;
+  }
+  .analogy {
+    background: #f0fff0;
+    border: 1px solid #7cb97c;
+    border-left: 4px solid #2e8b2e;
+    border-radius: 3px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    page-break-inside: avoid;
+  }
+  .analogy-title {
+    font-weight: bold;
+    color: #2e8b2e;
+    margin-bottom: 5px;
+  }
+  .anchor-box {
+    background: #fef5e7;
+    border: 2px solid #d97706;
+    border-radius: 6px;
+    padding: 16px 22px;
+    margin: 25px 0;
+    font-size: 11.5pt;
+    font-style: italic;
+    text-align: center;
+    color: #7a3d00;
+  }
+  .anchor-box strong { font-style: normal; color: #d97706; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 10.5pt;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  th {
+    background: #e0e8f0;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+  }
+  tr:nth-child(even) { background: #f8f8f5; }
+  td.num { text-align: right; font-family: 'Courier New', monospace; }
+  td.winner { background: #fff3c4 !important; font-weight: bold; }
+  ol, ul { margin-bottom: 15px; padding-left: 30px; }
+  li { margin-bottom: 6px; }
+  .epigraph {
+    font-style: italic;
+    color: #555;
+    border-left: 3px solid #aaa;
+    padding-left: 15px;
+    margin: 30px 40px;
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+  .epigraph-author { text-align: right; font-size: 10pt; color: #777; }
+  .toc {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    padding: 20px 30px;
+    margin: 30px 0;
+    border-radius: 5px;
+  }
+  .toc h3 { margin-top: 0; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+  .toc ol { list-style: none; counter-reset: toc; padding-left: 0; }
+  .toc > ol > li { counter-increment: toc; margin-bottom: 4px; }
+  .toc > ol > li::before { content: counter(toc) ". "; font-weight: bold; color: #0066cc; }
+  .diagram { margin: 25px auto; padding: 20px; text-align: center; page-break-inside: avoid; }
+  .diagram-caption { font-style: italic; font-size: 10pt; color: #555; margin-top: 8px; }
+  .diagram svg { max-width: 100%; }
+
+  /* ===== Interactive Calculator ===== */
+  .calculator {
+    background: #ffffff;
+    border: 2px solid #0066cc;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 30px 0;
+    box-shadow: 0 2px 6px rgba(0,102,204,0.08);
+    page-break-inside: avoid;
+  }
+  .calculator h3 {
+    margin-top: 0;
+    color: #0066cc;
+    font-family: 'Courier New', monospace;
+    font-size: 12pt;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    border-bottom: 1px solid #cfe0f0;
+    padding-bottom: 8px;
+  }
+  .calc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 10px;
+  }
+  @media (max-width: 760px) {
+    .calc-grid { grid-template-columns: 1fr; }
+  }
+  .calc-section {
+    background: #f7faff;
+    border: 1px solid #cfe0f0;
+    border-radius: 5px;
+    padding: 12px 16px;
+  }
+  .calc-section h4 {
+    margin: 0 0 10px;
+    font-size: 10pt;
+    color: #0066cc;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'Courier New', monospace;
+  }
+  .calc-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 10.5pt;
+  }
+  .calc-row label {
+    flex: 0 0 110px;
+    font-family: 'Courier New', monospace;
+    color: #444;
+    font-size: 10pt;
+  }
+  .calc-row input[type=number],
+  .calc-row select {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid #b8c8d8;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    background: #fff;
+  }
+  .calc-row input[type=range] { flex: 1; }
+  .calc-row .val {
+    flex: 0 0 55px;
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #0066cc;
+    font-size: 10pt;
+  }
+  .results {
+    margin-top: 16px;
+    background: #f8fff8;
+    border: 1px solid #a5d6a7;
+    border-radius: 5px;
+    padding: 14px 18px;
+  }
+  .results h4 {
+    margin: 0 0 10px;
+    font-size: 10pt;
+    color: #2e7d32;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'Courier New', monospace;
+  }
+  .results table { margin: 0; font-size: 10pt; }
+  .results td, .results th { padding: 5px 10px; }
+  .verdict {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #fff8e1;
+    border-left: 4px solid #f0a000;
+    border-radius: 3px;
+    font-size: 10.5pt;
+    color: #4a3300;
+    line-height: 1.55;
+  }
+  .verdict strong { color: #b37700; }
+  .launch-line {
+    font-family: 'Courier New', monospace;
+    font-size: 11pt;
+    background: #1e2a36;
+    color: #e0f2ff;
+    padding: 10px 14px;
+    border-radius: 4px;
+    margin-top: 10px;
+    overflow-x: auto;
+  }
+  .launch-line .kw { color: #80c8ff; }
+  .launch-line .num { color: #ffd580; }
+  .launch-line .cmt { color: #90a0b0; font-style: italic; }
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>Designing Launch Dimensions: Grid, Block, and Tile Size from the Hardware Up</h1>
+
+<div class="epigraph">
+  "Occupancy is not a goal — it's a budget. The chip gives you a fixed number of threads, warps, blocks, and bytes per SM. Your job is to spend that budget so no resource is wasted and no resource is overbooked."
+  <div class="epigraph-author">— The engineer's view of CUDA tuning</div>
+</div>
+
+<p>
+In the earlier chapters you saw <em>what</em> grid-stride and tiling do, and we hand-traced one combined example on a specific GPU. But every time you write a new kernel, you have to decide three numbers:
+</p>
+
+<ol>
+  <li>How many <strong>threads per block</strong>?</li>
+  <li>How many <strong>blocks</strong> in the grid?</li>
+  <li>If the kernel tiles shared memory, how big is the <strong>TILE</strong>?</li>
+</ol>
+
+<p>
+Pick them wrong and the chip sits half-idle, or your kernel refuses to launch because the shared memory doesn't fit. Pick them well and you get latency hiding, memory coalescing, and enough parallelism that the GPU's schedulers never run out of work.
+</p>
+
+<p>
+This chapter gives you a repeatable, hardware-first <strong>process</strong> for picking all three. By the end you'll have a step-by-step recipe you can run by hand, a cheat sheet for common GPUs, and an interactive calculator that does the arithmetic for you.
+</p>
+
+<div class="anchor-box">
+  <strong>The one sentence to remember:</strong><br>
+  Pick block size first (multiple of 32, shaped like your data). Then size the tile so shared memory lets at least 2 blocks live per SM. Then verify occupancy. Then launch 2&ndash;4&times; as many blocks as the chip can hold at once, and let grid-stride handle the rest.
+</div>
+
+<div class="toc">
+  <h3>Contents of This Chapter</h3>
+  <ol>
+    <li>The Mental Model: Four Limits, One Tightest Winner</li>
+    <li>Step 0 &mdash; Gather Your Hardware's Constraint Budget</li>
+    <li>Step 1 &mdash; Pick Threads Per Block</li>
+    <li>Step 2 &mdash; Pick TILE from the Shared Memory Budget</li>
+    <li>Step 3 &mdash; Verify Occupancy (Who Wins the Tightest Limit?)</li>
+    <li>Step 4 &mdash; Pick the Launch Grid</li>
+    <li>Interactive Design Calculator</li>
+    <li>Worked Example: GT200 for 4096&times;4096 Matmul</li>
+    <li>Worked Example: A100 for the Same</li>
+    <li>Cheat Sheet &mdash; Quick Picks for Common GPUs</li>
+    <li>The Escape Hatch: <code>cudaOccupancyMaxPotentialBlockSize</code></li>
+    <li>Summary &mdash; The Recipe on One Page</li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2>1. The Mental Model: Four Limits, One Tightest Winner</h2>
+
+<p>
+Before any formulas, hold this picture in your head. Every block you launch is a tenant trying to move into a Streaming Multiprocessor (SM). The SM is the landlord. The landlord has four independent rules:
+</p>
+
+<ol>
+  <li><strong>Block size</strong> itself cannot exceed the architecture's max threads per block (512 on GT200, 1024 on everything modern).</li>
+  <li><strong>Resident threads</strong> on an SM cannot exceed <code>maxThreadsPerSM</code> (= blocksPerSM &times; threadsPerBlock).</li>
+  <li><strong>Resident shared memory</strong> on an SM cannot exceed <code>sharedMemPerSM</code> (= blocksPerSM &times; sharedMemPerBlock).</li>
+  <li><strong>Number of resident blocks</strong> cannot exceed the architectural cap (8 on GT200, 16&ndash;32 on modern).</li>
+</ol>
+
+<p>
+There is a fifth limit &mdash; <strong>registers per SM</strong> &mdash; but we'll defer it to Step 3, because the compiler reports register usage and you usually don't choose it directly.
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">Key concept: the tightest limit always wins</div>
+  Each of the four rules gives you an upper bound on "blocks per SM that can fit." Compute all four. The <em>smallest</em> one is your actual blocksPerSM. If the smallest is 1, you have almost no latency hiding and you should back off some dimension. If the smallest is 4+, you're in a good place.
+</div>
+
+<div class="note-box">
+  <div class="note-box-title">Scenario for Figure 1.1</div>
+  <strong>GT200</strong> (maxBPSM=8, maxTPSM=1024, shared/SM=16 KB=16384 B, regs/SM=16384) running a tiled matmul kernel with <strong>TILE=16</strong> (so 256 threads per block, 2 KB shared per block) but <strong>24 registers per thread</strong> (a register-heavy variant with extra accumulators). Every bar below is computed from exactly these inputs.
+</div>
+
+<div class="diagram">
+  <svg width="700" height="260" viewBox="0 0 700 260">
+    <text x="350" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Four Limits Competing to be Tightest (GT200, TILE=16, 24 regs/thread)</text>
+
+    <!-- SM box -->
+    <rect x="30" y="40" width="640" height="195" rx="8" fill="#f0f7ff" stroke="#3366aa" stroke-width="2"/>
+    <text x="50" y="62" font-size="12" font-weight="bold" fill="#3366aa">One Streaming Multiprocessor (SM) &mdash; max = 8 blocks / 1024 threads</text>
+
+    <!-- bar scale: axis max = 8, bar width = 380 * value / 8, origin x=280 -->
+
+    <g font-family="Courier New" font-size="10">
+      <!-- Limit 1: arch cap = 8 -->
+      <text x="50" y="95"  fill="#333">architectural cap</text>
+      <text x="50" y="108" fill="#777" font-size="9">(hardware constant)</text>
+      <rect x="280" y="90" width="380" height="18" fill="#c8e6c9" stroke="#2e7d32"/>
+      <text x="665" y="103" fill="#1b5e20" font-weight="bold">8</text>
+
+      <!-- Limit 2: threads = 1024/256 = 4 -->
+      <text x="50" y="130" fill="#333">threads: 1024 &divide; 256</text>
+      <text x="50" y="143" fill="#777" font-size="9">maxTPSM / threadsPerBlock</text>
+      <rect x="280" y="125" width="190" height="18" fill="#ffecb3" stroke="#f0a000"/>
+      <text x="475" y="138" fill="#b37700" font-weight="bold">4</text>
+
+      <!-- Limit 3: shared = 16384/2048 = 8 -->
+      <text x="50" y="165" fill="#333">shared: 16384 &divide; 2048</text>
+      <text x="50" y="178" fill="#777" font-size="9">sharedPerSM / sharedPerBlock</text>
+      <rect x="280" y="160" width="380" height="18" fill="#bbdefb" stroke="#1565c0"/>
+      <text x="665" y="173" fill="#0d47a1" font-weight="bold">8</text>
+
+      <!-- Limit 4: regs = 16384/(24*256)=16384/6144 = 2 -->
+      <text x="50" y="200" fill="#333">regs: 16384 &divide; (24&times;256)</text>
+      <text x="50" y="213" fill="#777" font-size="9">regsPerSM / (regsPerThread &times; tpb)</text>
+      <rect x="280" y="195" width="95" height="18" fill="#f8bbd0" stroke="#ad1457"/>
+      <text x="380" y="208" fill="#880e4f" font-weight="bold">2</text>
+
+      <!-- Winner arrow -->
+      <text x="400" y="228" fill="#c62828" font-weight="bold" font-size="10">&larr; tightest limit = 2 resident blocks &rArr; occupancy = 2&times;256/1024 = 50%</text>
+    </g>
+  </svg>
+  <div class="diagram-caption">Figure 1.1 &mdash; four independent limits on blocks per SM for the stated scenario. The architectural cap (8) and shared-memory limit (8) are both generous; the thread limit allows 4; but the register budget only fits 2 blocks. The smallest wins, so the register limit is binding and you get 50% occupancy &mdash; half of what the chip could support if the kernel used fewer registers per thread.</div>
+</div>
+
+<!-- ================================================================== -->
+<h2>2. Step 0 &mdash; Gather Your Hardware's Constraint Budget</h2>
+
+<p>
+Before picking anything, write down these five numbers for your target GPU. Everything else follows from them.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Symbol</th><th>What it is</th><th>Where to find it</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>numSMs</code></td><td>Streaming multiprocessors on the chip</td><td><code>cudaDeviceProp.multiProcessorCount</code></td></tr>
+    <tr><td><code>maxTPB</code></td><td>Max threads per block (hard ceiling)</td><td><code>maxThreadsPerBlock</code></td></tr>
+    <tr><td><code>maxTPSM</code></td><td>Max resident threads per SM</td><td><code>maxThreadsPerMultiProcessor</code></td></tr>
+    <tr><td><code>maxBPSM</code></td><td>Max resident blocks per SM</td><td>architecture constant (8&ndash;32)</td></tr>
+    <tr><td><code>shrPSM</code></td><td>Shared memory per SM (bytes)</td><td><code>sharedMemPerMultiprocessor</code></td></tr>
+  </tbody>
+</table>
+
+<p>A tiny probe program prints them all:</p>
+
+<pre>#include &lt;cuda_runtime.h&gt;
+#include &lt;stdio.h&gt;
+
+int main() {
+    cudaDeviceProp p;
+    cudaGetDeviceProperties(&amp;p, 0);
+    printf("Device:            %s\n", p.name);
+    printf("SMs:               %d\n", p.multiProcessorCount);
+    printf("max threads/block: %d\n", p.maxThreadsPerBlock);
+    printf("max threads/SM:    %d\n", p.maxThreadsPerMultiProcessor);
+    printf("shared mem/SM:     %zu bytes\n", p.sharedMemPerMultiprocessor);
+    printf("regs/SM:           %d\n", p.regsPerMultiprocessor);
+    printf("warp size:         %d\n", p.warpSize);
+    return 0;
+}</pre>
+
+<p>Three concrete examples to keep handy as anchors:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>GPU</th>
+      <th>Year</th>
+      <th>SMs</th>
+      <th>maxTPB</th>
+      <th>maxTPSM</th>
+      <th>maxBPSM</th>
+      <th>Shared/SM</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>GT200 (Tesla, CC 1.3)</td>
+      <td class="num">2008</td>
+      <td class="num">30</td>
+      <td class="num">512</td>
+      <td class="num">1,024</td>
+      <td class="num">8</td>
+      <td class="num">16 KB</td>
+    </tr>
+    <tr>
+      <td>GTX 1080 (Pascal, CC 6.1)</td>
+      <td class="num">2016</td>
+      <td class="num">20</td>
+      <td class="num">1,024</td>
+      <td class="num">2,048</td>
+      <td class="num">32</td>
+      <td class="num">96 KB</td>
+    </tr>
+    <tr>
+      <td>A100 (Ampere, CC 8.0)</td>
+      <td class="num">2020</td>
+      <td class="num">108</td>
+      <td class="num">1,024</td>
+      <td class="num">2,048</td>
+      <td class="num">32</td>
+      <td class="num">164 KB</td>
+    </tr>
+    <tr>
+      <td>H100 (Hopper, CC 9.0)</td>
+      <td class="num">2022</td>
+      <td class="num">132</td>
+      <td class="num">1,024</td>
+      <td class="num">2,048</td>
+      <td class="num">32</td>
+      <td class="num">228 KB</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note-box">
+  <div class="note-box-title">Why GT200 feels so tight</div>
+  Notice how much smaller GT200's budget is: 16 KB of shared per SM instead of 164 KB, 512 threads per block instead of 1024, 8 blocks per SM instead of 32. Modern GPUs are not just <em>faster</em> &mdash; they have an order of magnitude more "room" on each SM, which is why TILE=32 became the default and why newer kernels don't sweat about shared memory.
+</div>
+
+<!-- ================================================================== -->
+<h2>3. Step 1 &mdash; Pick Threads Per Block</h2>
+
+<p>
+This is the first decision, and it almost picks itself. Three rules narrow the field to a handful of choices:
+</p>
+
+<ol>
+  <li><strong>Must be a multiple of 32</strong> (the warp size). A warp is the actual scheduling unit on a GPU; any thread count not divisible by 32 leaves lanes idle in the last warp. 100 threads wastes 28 lanes. 128 does not.</li>
+  <li><strong>Should match the shape of your data access.</strong> For matmul (or any 2D stencil), square: <code>TILE &times; TILE</code>. For 1D element-wise kernels, flat: 128, 256, or 512.</li>
+  <li><strong>Shouldn't be max.</strong> If you pick <code>maxThreadsPerBlock</code> (e.g. 1024), only one or two blocks can live per SM, which starves the scheduler. Smaller blocks (256 or 512) usually let 4&ndash;8 blocks per SM, which is better for latency hiding.</li>
+</ol>
+
+<div class="key-concept">
+  <div class="key-concept-title">Default to start with</div>
+  For 2D kernels: <strong>TILE = 16 &rArr; 256 threads per block</strong>.<br>
+  For 1D kernels: <strong>256 threads per block</strong>.<br>
+  These give you the right balance of per-block parallelism and room for many blocks per SM on nearly every architecture from Fermi through Hopper.
+</div>
+
+<p>
+Why not 128? It works, but with only 4 warps per block, a single stalled warp is a bigger fraction of your block's progress. Why not 1024? Only 1 or 2 blocks per SM, almost no latency hiding. 256 is the sweet spot.
+</p>
+
+<!-- ================================================================== -->
+<h2>4. Step 2 &mdash; Pick TILE from the Shared Memory Budget</h2>
+
+<p>
+Now you decide the tile size. For the standard matmul pattern we've been using, each block holds <strong>two</strong> tiles in shared memory: <code>As[TILE][TILE]</code> and <code>Bs[TILE][TILE]</code>. In bytes, for <code>float</code> (4 bytes each):
+</p>
+
+<pre>sharedBytesPerBlock = 2 &times; TILE&sup2; &times; 4</pre>
+
+<p>
+You want at least 2 (ideally 4+) blocks resident per SM, so that while one block is stalled on a global memory load, another block's warps keep the ALUs busy. Rearranging:
+</p>
+
+<pre>TILE&sup2;  &le;  shrPSM / (8 &times; desiredBlocksPerSM)
+TILE   &le;  sqrt( shrPSM / (8 &times; desiredBlocksPerSM) )</pre>
+
+<p>Worked for a few cases, wanting 4 blocks per SM:</p>
+
+<table>
+  <thead>
+    <tr><th>GPU</th><th>shrPSM</th><th>Budget per block</th><th>Max TILE</th><th>Typical pick</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>GT200</td><td class="num">16 KB</td><td class="num">4 KB</td><td class="num">22</td><td class="num">16</td></tr>
+    <tr><td>GTX 1080</td><td class="num">96 KB</td><td class="num">24 KB</td><td class="num">54</td><td class="num">32</td></tr>
+    <tr><td>A100</td><td class="num">164 KB</td><td class="num">41 KB</td><td class="num">71</td><td class="num">32</td></tr>
+    <tr><td>H100</td><td class="num">228 KB</td><td class="num">57 KB</td><td class="num">84</td><td class="num">32 or 64</td></tr>
+  </tbody>
+</table>
+
+<div class="note-box">
+  <div class="note-box-title">Why not just pick the maximum TILE?</div>
+  Three reasons. First, TILE must be a multiple of the warp dimension (so TILE&times;TILE is a multiple of 32), which already rules out most values. Second, a bigger tile means a bigger block (TILE&times;TILE threads), which quickly runs into the thread-per-SM limit and cuts blocks per SM. Third, powers of two (16, 32) align with coalesced memory access patterns and bank-conflict-free shared access; 22 does not. So in practice TILE &isin; {8, 16, 32, 64} almost always.
+</div>
+
+<!-- ================================================================== -->
+<h2>5. Step 3 &mdash; Verify Occupancy (Who Wins the Tightest Limit?)</h2>
+
+<p>
+Now you compute the <em>real</em> blocks-per-SM. Plug your choices into all four limit formulas and take the minimum:
+</p>
+
+<pre>blocksPerSM = min(
+    maxBPSM,                            // architectural cap
+    maxTPSM / threadsPerBlock,          // thread-count limit
+    shrPSM  / sharedPerBlock,           // shared memory limit
+    regsPerSM / (regsPerThread * threadsPerBlock)   // register limit
+)
+
+occupancy = (blocksPerSM * threadsPerBlock) / maxTPSM</pre>
+
+<p>
+Let's walk through <strong>A100 with TILE=16, 256 threads/block</strong>:
+</p>
+
+<table>
+  <thead>
+    <tr><th>Limit</th><th>Formula</th><th>Value</th><th>Blocks/SM allowed</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Architectural cap</td><td class="num">&mdash;</td><td class="num">32</td><td class="num">32</td></tr>
+    <tr><td>Thread limit</td><td class="num">2048 / 256</td><td class="num">&mdash;</td><td class="num">8</td></tr>
+    <tr><td>Shared memory limit</td><td class="num">164 KB / 2 KB</td><td class="num">&mdash;</td><td class="num">82</td></tr>
+    <tr><td>Register limit (assume 32/thread)</td><td class="num">65536 / (32&times;256)</td><td class="num">&mdash;</td><td class="num">8</td></tr>
+    <tr><td class="winner">&larr; tightest (wins)</td><td class="winner">min</td><td class="winner">&mdash;</td><td class="winner">8</td></tr>
+  </tbody>
+</table>
+
+<p>
+Occupancy = 8 &times; 256 / 2048 = <strong>100%</strong>. Beautiful.
+</p>
+
+<p>Now the same with <strong>TILE=32, 1024 threads/block</strong>:</p>
+
+<table>
+  <thead>
+    <tr><th>Limit</th><th>Formula</th><th>Blocks/SM allowed</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Architectural cap</td><td class="num">&mdash;</td><td class="num">32</td></tr>
+    <tr><td>Thread limit</td><td class="num">2048 / 1024</td><td class="num">2</td></tr>
+    <tr><td>Shared memory limit</td><td class="num">164 KB / 8 KB</td><td class="num">20</td></tr>
+    <tr><td class="winner">&larr; tightest (wins)</td><td class="winner">min</td><td class="winner">2</td></tr>
+  </tbody>
+</table>
+
+<p>
+Occupancy = 2 &times; 1024 / 2048 = 100% as well. But only <strong>2 blocks per SM</strong> &mdash; much less latency hiding. If one block stalls, only one other is available to step in. TILE=16 gives 8 blocks per SM: when one stalls, seven others take over. For memory-bound kernels on A100, TILE=16 is usually better for this reason.
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">Rule of thumb</div>
+  Prefer configurations that give you <strong>at least 4 blocks per SM</strong>. 2 is okay. 1 is dangerous. Below 50% occupancy, latency hiding breaks down and your kernel becomes bandwidth-starved.
+</div>
+
+<!-- ================================================================== -->
+<h2>6. Step 4 &mdash; Pick the Launch Grid</h2>
+
+<p>
+Now you know how many blocks fit on the chip at any instant:
+</p>
+
+<pre>concurrentBlocks = numSMs &times; blocksPerSM</pre>
+
+<p>
+For TILE=16 on an A100: 108 &times; 8 = <strong>864 blocks</strong> can run simultaneously. For TILE=16 on GT200: 30 &times; 4 = <strong>120 blocks</strong>.
+</p>
+
+<h3>6.1 Launched &ne; Resident: the Scheduler Does the Queueing</h3>
+
+<p>
+Before we continue, a point that trips up almost every CUDA learner: <strong>the grid size you pass to <code>&lt;&lt;&lt;grid, block&gt;&gt;&gt;</code> is not the same as what runs on the chip at once.</strong> The hardware limit (<code>concurrentBlocks</code>) only bounds how many blocks are <em>resident</em> on the SMs at any instant. The grid size is just a logical queue of work &mdash; the scheduler drains it in waves.
+</p>
+
+<table>
+  <thead>
+    <tr><th>Concept</th><th>What bounds it</th><th>Typical value</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Resident blocks</strong><br>(executing on SMs right now)</td>
+      <td>the four limits from Step 3</td>
+      <td>e.g. 864 on A100</td>
+    </tr>
+    <tr>
+      <td><strong>Launched blocks</strong><br>(what you put in <code>gridDim</code>)</td>
+      <td>~2 billion (gridDim.x max = 2<sup>31</sup>&minus;1)</td>
+      <td>anything you want</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+So when the recipe says "launch 2&ndash;4&times; concurrentBlocks," that is <em>not</em> a limit violation. You are telling the scheduler: "here are twice as many blocks as the chip can hold &mdash; serve them in two waves." The first wave fills the SMs; as blocks finish, the scheduler backfills from wave two until the queue is empty.
+</p>
+
+<div class="diagram">
+  <svg width="700" height="220" viewBox="0 0 700 220">
+    <text x="350" y="20" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">The Scheduler Drains the Grid in Waves</text>
+
+    <!-- Launched grid -->
+    <text x="50" y="52" font-size="11" font-weight="bold" fill="#0066cc">Launched grid (1728 blocks)</text>
+    <g>
+      <rect x="50"  y="60" width="140" height="35" fill="#c8e6c9" stroke="#2e7d32"/>
+      <text x="120" y="82" text-anchor="middle" font-size="10" fill="#1b5e20">wave 1 (864)</text>
+      <rect x="195" y="60" width="140" height="35" fill="#ffecb3" stroke="#f0a000"/>
+      <text x="265" y="82" text-anchor="middle" font-size="10" fill="#b37700">wave 2 (864)</text>
+      <rect x="340" y="60" width="140" height="35" fill="#e0e0e0" stroke="#888" stroke-dasharray="3,2"/>
+      <text x="410" y="82" text-anchor="middle" font-size="10" fill="#555">(empty)</text>
+      <rect x="485" y="60" width="140" height="35" fill="#e0e0e0" stroke="#888" stroke-dasharray="3,2"/>
+      <text x="555" y="82" text-anchor="middle" font-size="10" fill="#555">(empty)</text>
+    </g>
+
+    <!-- Arrows showing scheduler feeding chip -->
+    <path d="M 120 100 Q 120 125 350 135" fill="none" stroke="#0066cc" stroke-width="1.5" marker-end="url(#ar1)"/>
+    <path d="M 265 100 Q 265 135 350 150" fill="none" stroke="#f0a000" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#ar2)"/>
+
+    <defs>
+      <marker id="ar1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <polygon points="0 0, 8 4, 0 8" fill="#0066cc"/>
+      </marker>
+      <marker id="ar2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <polygon points="0 0, 8 4, 0 8" fill="#f0a000"/>
+      </marker>
+    </defs>
+
+    <!-- Chip (A100) -->
+    <text x="50" y="135" font-size="11" font-weight="bold" fill="#333">A100 chip (holds 864 resident)</text>
+    <rect x="300" y="140" width="325" height="60" rx="4" fill="#f0f7ff" stroke="#3366aa" stroke-width="1.5"/>
+    <text x="462" y="162" text-anchor="middle" font-size="10" fill="#3366aa">108 SMs &times; 8 blocks/SM = 864 resident</text>
+    <text x="462" y="180" text-anchor="middle" font-size="9.5" fill="#555">wave 1 runs first; as blocks finish, scheduler</text>
+    <text x="462" y="193" text-anchor="middle" font-size="9.5" fill="#555">backfills from wave 2 until the grid is drained</text>
+  </svg>
+  <div class="diagram-caption">Figure 6.1 &mdash; launching 1728 blocks on an A100 that holds 864 resident is perfectly legal. The scheduler runs them in two back-to-back waves. You can launch 65,536 blocks (76 waves) just as safely &mdash; the hardware limit is on resident, not launched.</div>
+</div>
+
+<h3>6.2 So Why 2&ndash;4&times;? Why Not Exactly 1&times;? Why Not 100&times;?</h3>
+
+<p>
+Given that any grid size is legal, the real question is: what size makes the kernel fastest? Three forces are in tension.
+</p>
+
+<p>
+<strong>Why not exactly 1&times; concurrent?</strong> Because blocks don't all finish at the same time. Some output tiles sit near the matrix edge and do less work (padded zeros); some SMs run faster than others due to cache warmth; some blocks stall on memory for longer than their neighbors. If the grid is exactly one wave, a few slow blocks at the "tail" leave most SMs idle while the chip waits for them to finish.
+</p>
+
+<div class="diagram">
+  <svg width="680" height="170" viewBox="0 0 680 170">
+    <text x="340" y="20" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">The Tail Effect &mdash; why 1&times; concurrent is not enough</text>
+
+    <!-- 1x case: uneven finish -->
+    <text x="20" y="45" font-size="10" font-weight="bold" fill="#c62828">Grid = 1&times; concurrent (unbalanced)</text>
+    <g font-family="Courier New" font-size="9">
+      <rect x="20" y="52" width="340" height="14" fill="#a5d6a7" stroke="#2e7d32"/><text x="365" y="63" fill="#1b5e20">SM 0 &mdash; finishes early, IDLE</text>
+      <rect x="20" y="70" width="520" height="14" fill="#a5d6a7" stroke="#2e7d32"/><text x="545" y="81" fill="#1b5e20">SM 1 &mdash; still working</text>
+      <rect x="20" y="88" width="270" height="14" fill="#a5d6a7" stroke="#2e7d32"/><text x="295" y="99" fill="#1b5e20">SM 2 &mdash; very early, IDLE</text>
+      <rect x="20" y="106" width="520" height="14" fill="#a5d6a7" stroke="#2e7d32"/><text x="545" y="117" fill="#1b5e20">SM 3 &mdash; still working</text>
+    </g>
+
+    <!-- shaded "idle" region -->
+    <rect x="360" y="52" width="180" height="14" fill="url(#hatchR)" opacity="0.5"/>
+    <rect x="290" y="88" width="250" height="14" fill="url(#hatchR)" opacity="0.5"/>
+
+    <defs>
+      <pattern id="hatchR" patternUnits="userSpaceOnUse" width="6" height="6">
+        <path d="M0,6 L6,0" stroke="#c62828" stroke-width="1"/>
+      </pattern>
+    </defs>
+
+    <text x="20" y="145" font-size="10" fill="#555">With 2&times; concurrent, the moment an SM finishes a block, the scheduler hands it a backfill block</text>
+    <text x="20" y="158" font-size="10" fill="#555">from wave 2 &mdash; so the hatched "idle" regions above get filled with useful work instead of silence.</text>
+  </svg>
+  <div class="diagram-caption">Figure 6.2 &mdash; when the grid exactly fills the chip, uneven block finish times create idle gaps (red hatching). Launching extra blocks lets the scheduler backfill those gaps.</div>
+</div>
+
+<p>
+<strong>Why not 100&times; concurrent?</strong> Because with that many small blocks, each block does only one output tile and you lose the amortization that grid-stride buys you. Compare:
+</p>
+
+<table>
+  <thead>
+    <tr><th>Launch size</th><th>Blocks each SM processes</th><th>Work per block</th><th>Trade-off</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="num">1&times; concurrent (864 on A100)</td>
+      <td class="num">1</td>
+      <td class="num">big (many tiles via stride)</td>
+      <td>tail idle; chip under-utilized</td>
+    </tr>
+    <tr style="background:#fff3c4;font-weight:bold">
+      <td class="num">2&ndash;4&times; concurrent (1728&ndash;3456)</td>
+      <td class="num">2&ndash;4</td>
+      <td class="num">medium</td>
+      <td>backfill always ready, overhead amortized</td>
+    </tr>
+    <tr>
+      <td class="num">10&times; concurrent</td>
+      <td class="num">10</td>
+      <td class="num">small</td>
+      <td>diminishing returns</td>
+    </tr>
+    <tr>
+      <td class="num">= outputTiles (76&times; for 4K matmul)</td>
+      <td class="num">~76</td>
+      <td class="num">one tile each</td>
+      <td>startup/teardown cost paid 76&times; more often</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+Each block has non-trivial fixed cost: register allocation, shared-memory initialization, the final <code>__syncthreads()</code> + stores + cleanup. With grid-stride, that cost is amortized over many output tiles. At 2&ndash;4&times; concurrent, you get both benefits: the scheduler always has backfill to hide tail imbalance, <em>and</em> each block still does enough work for amortization to matter.
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">The core insight</div>
+  The hardware limit bounds what's <strong>resident</strong>. The launch count bounds how much work you <strong>queue</strong>. Grid-stride lets you decouple the two, so each block does a meaningful slab of work instead of one tiny tile.
+</div>
+
+<h3>6.3 Back to the Decision Rule</h3>
+
+<p>
+Now compare to how many output tiles your problem has. For an M&times;N output matrix:
+</p>
+
+<pre>outputTiles = ceil(M / TILE) &times; ceil(N / TILE)</pre>
+
+<p>Three cases decide the grid:</p>
+
+<table>
+  <thead>
+    <tr><th>Case</th><th>Grid to launch</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>outputTiles &le; concurrentBlocks</code></td>
+      <td>launch <code>outputTiles</code> blocks</td>
+      <td>problem is tiny; no grid-stride needed</td>
+    </tr>
+    <tr>
+      <td><code>outputTiles</code> up to ~8&times; concurrent</td>
+      <td>launch <code>outputTiles</code> blocks</td>
+      <td>chip chews through in a few waves; stride loop not necessary</td>
+    </tr>
+    <tr>
+      <td><code>outputTiles &gt;&gt; concurrentBlocks</code></td>
+      <td>launch <strong>2&ndash;4&times; concurrentBlocks</strong>, use grid-stride</td>
+      <td>decouple grid size from data size; let each block iterate</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="analogy">
+  <div class="analogy-title">Analogy: hiring for a shift</div>
+  If you have 100 tasks and 10 workers, you don't hire 100 temps. You hire ~20 (so each handles 5 tasks with some overlap for breaks) and let them loop through the queue. Launching too few blocks starves the chip; launching exactly as many as you have tasks works until the number of tasks explodes. Grid-stride lets you decouple "how many workers" from "how many tasks."
+</div>
+
+<p class="page-break"></p>
+
+<!-- ================================================================== -->
+<h2>7. Interactive Design Calculator</h2>
+
+<p>
+Here's where the recipe becomes concrete. Pick a GPU and a problem size below. The calculator runs all four limit checks, finds the tightest, computes occupancy, and tells you exactly what <code>dim3 grid</code> and <code>dim3 block</code> to launch with.
+</p>
+
+<div class="calculator">
+  <h3>Launch Dimension Calculator</h3>
+
+  <div class="calc-grid">
+    <!-- ===== Hardware inputs ===== -->
+    <div class="calc-section">
+      <h4>Hardware</h4>
+
+      <div class="calc-row">
+        <label for="gpuPreset">GPU</label>
+        <select id="gpuPreset">
+          <option value="gt200">GT200 (Tesla, 2008)</option>
+          <option value="fermi">Fermi C2050 (2010)</option>
+          <option value="kepler">Kepler K20 (2012)</option>
+          <option value="pascal" selected>Pascal GTX 1080 (2016)</option>
+          <option value="volta">Volta V100 (2017)</option>
+          <option value="ampere">Ampere A100 (2020)</option>
+          <option value="ada">Ada RTX 4090 (2022)</option>
+          <option value="hopper">Hopper H100 (2022)</option>
+          <option value="custom">Custom...</option>
+        </select>
+      </div>
+
+      <div class="calc-row">
+        <label>numSMs</label>
+        <input type="number" id="hwSMs" min="1" max="256" value="20">
+      </div>
+      <div class="calc-row">
+        <label>maxTPB</label>
+        <input type="number" id="hwMaxTPB" min="32" max="2048" step="32" value="1024">
+      </div>
+      <div class="calc-row">
+        <label>maxTPSM</label>
+        <input type="number" id="hwMaxTPSM" min="256" max="4096" step="256" value="2048">
+      </div>
+      <div class="calc-row">
+        <label>maxBPSM</label>
+        <input type="number" id="hwMaxBPSM" min="1" max="64" value="32">
+      </div>
+      <div class="calc-row">
+        <label>shared/SM (KB)</label>
+        <input type="number" id="hwShared" min="4" max="256" step="4" value="96">
+      </div>
+      <div class="calc-row">
+        <label>regs/SM</label>
+        <input type="number" id="hwRegs" min="8192" max="131072" step="1024" value="65536">
+      </div>
+    </div>
+
+    <!-- ===== Kernel inputs ===== -->
+    <div class="calc-section">
+      <h4>Kernel &amp; Problem</h4>
+
+      <div class="calc-row">
+        <label for="tileSize">TILE</label>
+        <select id="tileSize">
+          <option value="8">8</option>
+          <option value="16" selected>16</option>
+          <option value="32">32</option>
+          <option value="64">64</option>
+        </select>
+      </div>
+      <div class="calc-row">
+        <label>regs/thread</label>
+        <input type="number" id="regsPerThread" min="8" max="255" value="32">
+      </div>
+      <div class="calc-row">
+        <label>bytes/element</label>
+        <select id="bytesPerElem">
+          <option value="2">2 (half/bf16)</option>
+          <option value="4" selected>4 (float)</option>
+          <option value="8">8 (double)</option>
+        </select>
+      </div>
+
+      <h4 style="margin-top:14px">Matmul size C = A&times;B</h4>
+      <div class="calc-row">
+        <label>M (rows of C)</label>
+        <input type="number" id="dimM" min="1" max="65536" value="4096">
+      </div>
+      <div class="calc-row">
+        <label>K (inner dim)</label>
+        <input type="number" id="dimK" min="1" max="65536" value="4096">
+      </div>
+      <div class="calc-row">
+        <label>N (cols of C)</label>
+        <input type="number" id="dimN" min="1" max="65536" value="4096">
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Results ===== -->
+  <div class="results">
+    <h4>Per-Block Resources</h4>
+    <table>
+      <tr><td>threads per block</td><td class="num" id="outTPB">&mdash;</td><td>= TILE &times; TILE</td></tr>
+      <tr><td>warps per block</td><td class="num" id="outWPB">&mdash;</td><td>= tpb / 32</td></tr>
+      <tr><td>shared mem per block</td><td class="num" id="outShr">&mdash;</td><td>= 2 &times; TILE&sup2; &times; bytes</td></tr>
+      <tr><td>registers per block</td><td class="num" id="outReg">&mdash;</td><td>= regs/thread &times; tpb</td></tr>
+    </table>
+  </div>
+
+  <div class="results" style="margin-top:12px">
+    <h4>Blocks per SM &mdash; Four Limits</h4>
+    <table id="limitsTable">
+      <thead>
+        <tr><th>Limit</th><th>Computation</th><th>Blocks/SM</th></tr>
+      </thead>
+      <tbody>
+        <tr id="lim1"><td>architectural cap</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr id="lim2"><td>threads/SM &divide; threads/block</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr id="lim3"><td>shared/SM &divide; shared/block</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+        <tr id="lim4"><td>regs/SM &divide; regs/block</td><td class="num">&mdash;</td><td class="num">&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="results" style="margin-top:12px">
+    <h4>Final Launch Configuration</h4>
+    <table>
+      <tr><td>actual blocks/SM</td><td class="num" id="outBPSM">&mdash;</td><td>&larr; tightest limit wins</td></tr>
+      <tr><td>occupancy</td><td class="num" id="outOcc">&mdash;</td><td>resident threads / maxTPSM</td></tr>
+      <tr><td>concurrent blocks on chip</td><td class="num" id="outConc">&mdash;</td><td>= numSMs &times; blocks/SM</td></tr>
+      <tr><td>output tiles in problem</td><td class="num" id="outTiles">&mdash;</td><td>= &lceil;M/T&rceil; &times; &lceil;N/T&rceil;</td></tr>
+      <tr><td>oversubscription ratio</td><td class="num" id="outRatio">&mdash;</td><td>outputTiles / concurrent</td></tr>
+    </table>
+
+    <div class="launch-line" id="launchCode">
+      <span class="cmt">// calculating...</span>
+    </div>
+
+    <div class="verdict" id="verdict">
+      Adjust the inputs above to see analysis.
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<h2>8. Worked Example: GT200 for 4096&times;4096 Matmul</h2>
+
+<p>
+Let's walk the process by hand for a historical GPU, where the constraints bite hard.
+</p>
+
+<p><strong>Step 0 &mdash; hardware:</strong> 30 SMs, maxTPB=512, maxTPSM=1024, maxBPSM=8, shared=16 KB.</p>
+
+<p><strong>Step 1 &mdash; block size:</strong> try TILE=16 &rArr; 256 threads/block. That's under GT200's 512 ceiling. Good.</p>
+
+<p><strong>Step 2 &mdash; shared memory:</strong> 2 tiles &times; 16&sup2; &times; 4 B = 2 KB/block.</p>
+
+<p><strong>Step 3 &mdash; four limits</strong> (assume a lean tiled kernel at ~16 regs/thread):</p>
+
+<table>
+  <thead><tr><th>Limit</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>architectural cap</td><td class="num">8</td></tr>
+    <tr><td>threads: 1024/256</td><td class="num">4</td></tr>
+    <tr><td>shared: 16KB/2KB</td><td class="num">8</td></tr>
+    <tr><td>regs: 16384/(16&times;256)</td><td class="num">4</td></tr>
+    <tr style="background:#fff3c4;font-weight:bold"><td>&larr; tightest</td><td class="num">4</td></tr>
+  </tbody>
+</table>
+
+<p>
+Occupancy = 4 &times; 256 / 1024 = <strong>100%</strong>. Excellent &mdash; thread and register limits both pin us at 4 blocks per SM.
+</p>
+
+<p><strong>Step 4 &mdash; launch grid:</strong></p>
+
+<ul>
+  <li>Concurrent on chip = 30 &times; 4 = 120 blocks</li>
+  <li>Output tiles = (4096/16)&sup2; = 256&sup2; = <strong>65,536 tiles</strong></li>
+  <li>Ratio = 65,536 / 120 = 546&times; oversubscription &rArr; use grid-stride</li>
+  <li>Launch ~2&times; concurrent = <strong>240 blocks</strong>, arranged as e.g. dim3(16, 15)</li>
+  <li>Each block handles ~273 output tiles via the grid-stride loop</li>
+</ul>
+
+<pre>dim3 block(16, 16);          // 256 threads, TILE&times;TILE
+dim3 grid(16, 15);           // 240 blocks ~= 2 &times; concurrent
+matMulTiledStrided&lt;&lt;&lt;grid, block&gt;&gt;&gt;(A, B, C, 4096, 4096, 4096);</pre>
+
+<!-- ================================================================== -->
+<h2>9. Worked Example: A100 for the Same</h2>
+
+<p><strong>Step 0 &mdash; hardware:</strong> 108 SMs, maxTPB=1024, maxTPSM=2048, maxBPSM=32, shared=164 KB.</p>
+
+<p><strong>Step 1 &mdash; block size:</strong> try TILE=16 &rArr; 256 threads/block.</p>
+
+<p><strong>Step 2 &mdash; shared memory:</strong> 2 &times; 256 &times; 4 = 2 KB/block.</p>
+
+<p><strong>Step 3 &mdash; four limits</strong> (assume a lean tiled kernel at ~32 regs/thread):</p>
+
+<table>
+  <thead><tr><th>Limit</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>architectural cap</td><td class="num">32</td></tr>
+    <tr><td>threads: 2048/256</td><td class="num">8</td></tr>
+    <tr><td>shared: 164KB/2KB</td><td class="num">82</td></tr>
+    <tr><td>regs: 65536/(32&times;256)</td><td class="num">8</td></tr>
+    <tr style="background:#fff3c4;font-weight:bold"><td>&larr; tightest</td><td class="num">8</td></tr>
+  </tbody>
+</table>
+
+<p>
+Occupancy = 8 &times; 256 / 2048 = <strong>100%</strong>. Thread and register limits tie at 8. A100 has 108 SMs vs. GT200's 30, so the same per-block picture multiplies to much more throughput.
+</p>
+
+<p><strong>Step 4 &mdash; launch grid:</strong></p>
+
+<ul>
+  <li>Concurrent on chip = 108 &times; 8 = 864 blocks</li>
+  <li>Output tiles = 65,536</li>
+  <li>Ratio = 65,536 / 864 = 76&times; &rArr; use grid-stride</li>
+  <li>Launch ~2&times; concurrent &asymp; <strong>1,728 blocks</strong>, arranged dim3(48, 36)</li>
+  <li>Each block handles ~38 output tiles via grid-stride</li>
+</ul>
+
+<pre>dim3 block(16, 16);
+dim3 grid(48, 36);           // 1728 blocks ~= 2 &times; concurrent
+matMulTiledStrided&lt;&lt;&lt;grid, block&gt;&gt;&gt;(A, B, C, 4096, 4096, 4096);</pre>
+
+<div class="note-box">
+  <div class="note-box-title">Same kernel, two GPUs, only the grid changes</div>
+  Notice: the kernel code is <em>identical</em>. The block shape is <em>identical</em>. The only thing that changes is the grid size, driven by hardware capacity. That's the whole point of the grid-stride pattern &mdash; you tune the grid to the chip, not to the data.
+</div>
+
+<!-- ================================================================== -->
+<h2>10. Cheat Sheet &mdash; Quick Picks for Common GPUs</h2>
+
+<p>
+If you want a reasonable starting point without running the calculator, here's what to grab off the shelf for float32 matmul:
+</p>
+
+<table>
+  <thead>
+    <tr><th>GPU family</th><th>TILE</th><th>threads/block</th><th>blocks/SM</th><th>Launch (huge matmul)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>GT200 / Fermi</td><td class="num">16</td><td class="num">256</td><td class="num">4</td><td><code>numSMs &times; 8</code></td></tr>
+    <tr><td>Kepler / Maxwell</td><td class="num">16</td><td class="num">256</td><td class="num">8</td><td><code>numSMs &times; 16</code></td></tr>
+    <tr><td>Pascal / Volta</td><td class="num">16 or 32</td><td class="num">256 or 1024</td><td class="num">8 or 2</td><td><code>numSMs &times; 16</code></td></tr>
+    <tr><td>Turing / Ampere</td><td class="num">16 or 32</td><td class="num">256 or 1024</td><td class="num">8 or 2</td><td><code>numSMs &times; 16</code></td></tr>
+    <tr><td>Ada / Hopper</td><td class="num">32 (or 64 half)</td><td class="num">1024</td><td class="num">2</td><td><code>numSMs &times; 4</code></td></tr>
+  </tbody>
+</table>
+
+<p>
+For element-wise 1D kernels, forget tiles and shared memory. Just use <strong>256 threads per block</strong> and launch <code>numSMs &times; (2048/256) &times; 2</code> blocks with grid-stride. On A100 that's 108 &times; 8 &times; 2 = 1728 blocks regardless of input size.
+</p>
+
+<!-- ================================================================== -->
+<h2>11. The Escape Hatch: <code>cudaOccupancyMaxPotentialBlockSize</code></h2>
+
+<p>
+When you don't want to work through the four limits by hand, CUDA has an API that does it for you. Given your kernel's compiled register and shared-memory usage, it picks a block size that maximizes occupancy:
+</p>
+
+<pre>int minGridSize;      // smallest grid for full occupancy
+int bestBlockSize;    // ideal threads per block for this kernel
+cudaOccupancyMaxPotentialBlockSize(
+    &amp;minGridSize,
+    &amp;bestBlockSize,
+    matMulTiledStrided,     // your kernel function pointer
+    0,                      // dynamic shared mem per block (0 if static)
+    0);                     // block size limit (0 = no limit)
+
+// Now launch:
+myKernel&lt;&lt;&lt;minGridSize, bestBlockSize&gt;&gt;&gt;(...);</pre>
+
+<p>
+This is useful for templated or generic kernels where you don't know the exact register usage until compile time. For kernels with a natural shape (like matmul tiles), stick with the hand-computed approach so you keep control of <code>TILE</code>.
+</p>
+
+<p>Then, for either path, <strong>profile with Nsight Compute</strong>. The theoretical process above gets you 80% of the way; the profiler shows the remaining 20% (bank conflicts, un-coalesced loads, stall reasons).</p>
+
+<!-- ================================================================== -->
+<h2>12. Summary &mdash; The Recipe on One Page</h2>
+
+<div class="key-concept">
+  <div class="key-concept-title">The complete design process</div>
+
+<pre style="background:#fff;border:none;padding:0;margin:8px 0">
+Step 0:  Query cudaGetDeviceProperties, write down 5 limits
+         (numSMs, maxTPB, maxTPSM, maxBPSM, sharedPerSM)
+
+Step 1:  threadsPerBlock = TILE &times; TILE
+         - start TILE = 16   (gives 256 threads)
+         - must be &le; maxTPB, must be multiple of 32
+
+Step 2:  sharedPerBlock = 2 &times; TILE&sup2; &times; bytesPerElement
+         - verify TILE&sup2; &le; sharedPerSM / (8 &times; desiredBlocksPerSM)
+
+Step 3:  blocksPerSM = min of:
+            maxBPSM
+            maxTPSM / threadsPerBlock
+            sharedPerSM / sharedPerBlock
+            regsPerSM / (regsPerThread &times; threadsPerBlock)
+         occupancy = blocksPerSM &times; threadsPerBlock / maxTPSM
+         target occupancy &ge; 50%, preferably &ge; 75%
+
+Step 4:  concurrentBlocks = numSMs &times; blocksPerSM
+         if outputTiles &gt;&gt; concurrentBlocks:
+             launch 2-4 &times; concurrentBlocks  (use grid-stride)
+         else:
+             launch outputTiles blocks directly
+</pre>
+</div>
+
+<div class="anchor-box">
+  <strong>Remember:</strong><br>
+  Hardware picks the budget. You pick the tile. The compiler picks the registers. The runtime picks the schedule.<br>
+  Your job is to make the four limits balance, so no resource &mdash; threads, warps, shared memory, registers &mdash; is the bottleneck alone.
+</div>
+
+<p>
+With this chapter and the calculator above, you now have the full process. Next time you write a kernel, open the calculator, plug in your GPU and your problem, and launch with confidence.
+</p>
+
+<script>
+// ============================================================
+// Launch Dimension Calculator
+// ============================================================
+
+const GPUS = {
+  gt200:   { sms: 30,  maxTPB: 512,  maxTPSM: 1024, maxBPSM: 8,  shared: 16,  regs: 16384 },
+  fermi:   { sms: 14,  maxTPB: 1024, maxTPSM: 1536, maxBPSM: 8,  shared: 48,  regs: 32768 },
+  kepler:  { sms: 13,  maxTPB: 1024, maxTPSM: 2048, maxBPSM: 16, shared: 48,  regs: 65536 },
+  pascal:  { sms: 20,  maxTPB: 1024, maxTPSM: 2048, maxBPSM: 32, shared: 96,  regs: 65536 },
+  volta:   { sms: 80,  maxTPB: 1024, maxTPSM: 2048, maxBPSM: 32, shared: 96,  regs: 65536 },
+  ampere:  { sms: 108, maxTPB: 1024, maxTPSM: 2048, maxBPSM: 32, shared: 164, regs: 65536 },
+  ada:     { sms: 128, maxTPB: 1024, maxTPSM: 1536, maxBPSM: 24, shared: 100, regs: 65536 },
+  hopper:  { sms: 132, maxTPB: 1024, maxTPSM: 2048, maxBPSM: 32, shared: 228, regs: 65536 }
+};
+
+const $ = (id) => document.getElementById(id);
+
+function applyPreset() {
+  const which = $('gpuPreset').value;
+  if (which === 'custom') return;
+  const g = GPUS[which];
+  $('hwSMs').value     = g.sms;
+  $('hwMaxTPB').value  = g.maxTPB;
+  $('hwMaxTPSM').value = g.maxTPSM;
+  $('hwMaxBPSM').value = g.maxBPSM;
+  $('hwShared').value  = g.shared;
+  $('hwRegs').value    = g.regs;
+  recompute();
+}
+
+function readHW() {
+  return {
+    sms:     parseInt($('hwSMs').value)     || 1,
+    maxTPB:  parseInt($('hwMaxTPB').value)  || 1024,
+    maxTPSM: parseInt($('hwMaxTPSM').value) || 2048,
+    maxBPSM: parseInt($('hwMaxBPSM').value) || 32,
+    shared:  parseInt($('hwShared').value)  || 96,          // KB
+    regs:    parseInt($('hwRegs').value)    || 65536
+  };
+}
+
+function readKernel() {
+  return {
+    tile:  parseInt($('tileSize').value) || 16,
+    regsT: parseInt($('regsPerThread').value) || 32,
+    bpe:   parseInt($('bytesPerElem').value) || 4,
+    M:     parseInt($('dimM').value) || 1,
+    K:     parseInt($('dimK').value) || 1,
+    N:     parseInt($('dimN').value) || 1
+  };
+}
+
+function fmt(n) {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
+  if (n >= 1_000)     return n.toLocaleString();
+  return String(n);
+}
+
+function recompute() {
+  const hw = readHW();
+  const kn = readKernel();
+
+  // --- derive per-block quantities ---
+  const tpb = kn.tile * kn.tile;
+  const warpsPerBlock = Math.ceil(tpb / 32);
+  const sharedPerBlockBytes = 2 * kn.tile * kn.tile * kn.bpe;   // As + Bs
+  const sharedPerSMBytes = hw.shared * 1024;
+  const regsPerBlock = kn.regsT * tpb;
+
+  // --- four limits ---
+  const limArch   = hw.maxBPSM;
+  const limThread = Math.floor(hw.maxTPSM / tpb);
+  const limShared = sharedPerBlockBytes > 0
+                    ? Math.floor(sharedPerSMBytes / sharedPerBlockBytes)
+                    : 9999;
+  const limReg    = regsPerBlock > 0
+                    ? Math.floor(hw.regs / regsPerBlock)
+                    : 9999;
+
+  // Also enforce hard ceiling: block size must be <= maxTPB
+  let infeasibleReason = null;
+  if (tpb > hw.maxTPB) {
+    infeasibleReason = `TILE&sup2; = ${tpb} threads exceeds this GPU's maxTPB = ${hw.maxTPB}. Pick a smaller TILE.`;
+  }
+
+  const limits = [
+    { name: 'architectural cap',           formula: `max ${limArch}`,                        value: limArch,   id: 'lim1' },
+    { name: 'threads/SM &divide; threads/block',  formula: `${hw.maxTPSM} / ${tpb}`,                 value: limThread, id: 'lim2' },
+    { name: 'shared/SM &divide; shared/block',    formula: `${sharedPerSMBytes} / ${sharedPerBlockBytes}`, value: limShared, id: 'lim3' },
+    { name: 'regs/SM &divide; regs/block',        formula: `${hw.regs} / ${regsPerBlock}`,          value: limReg,    id: 'lim4' }
+  ];
+
+  const actualBPSM = Math.max(0, Math.min(limArch, limThread, limShared, limReg));
+  const residentThreads = actualBPSM * tpb;
+  const occupancy = residentThreads / hw.maxTPSM;
+  const concurrent = hw.sms * actualBPSM;
+
+  // --- problem ---
+  const tilesY = Math.ceil(kn.M / kn.tile);
+  const tilesX = Math.ceil(kn.N / kn.tile);
+  const outputTiles = tilesX * tilesY;
+  const ratio = concurrent > 0 ? outputTiles / concurrent : 0;
+
+  // --- write per-block panel ---
+  $('outTPB').textContent = tpb.toLocaleString();
+  $('outWPB').textContent = warpsPerBlock;
+  $('outShr').textContent = sharedPerBlockBytes.toLocaleString() + ' B  (' + (sharedPerBlockBytes/1024).toFixed(2) + ' KB)';
+  $('outReg').textContent = regsPerBlock.toLocaleString();
+
+  // --- write limits table ---
+  for (const L of limits) {
+    const row = $(L.id);
+    row.children[0].innerHTML = L.name;
+    row.children[1].innerHTML = L.formula;
+    row.children[2].textContent = (L.value >= 9999 ? '&infin;' : L.value);
+    row.classList.remove('winner-row');
+    row.children[0].classList.remove('winner');
+    row.children[1].classList.remove('winner');
+    row.children[2].classList.remove('winner');
+  }
+  // Mark the tightest
+  const minVal = Math.min(...limits.map(L => L.value));
+  for (const L of limits) {
+    if (L.value === minVal) {
+      const row = $(L.id);
+      row.children[0].classList.add('winner');
+      row.children[1].classList.add('winner');
+      row.children[2].classList.add('winner');
+    }
+  }
+
+  // --- write final panel ---
+  $('outBPSM').textContent  = actualBPSM;
+  $('outOcc').textContent   = (occupancy * 100).toFixed(1) + '%';
+  $('outConc').textContent  = concurrent.toLocaleString();
+  $('outTiles').textContent = outputTiles.toLocaleString() + '  (' + tilesY + ' &times; ' + tilesX + ')';
+  $('outRatio').textContent = ratio.toFixed(1) + '&times;';
+
+  // --- decide launch and verdict ---
+  let gridLaunch, verdict;
+
+  if (infeasibleReason) {
+    gridLaunch = '<span class="cmt">// infeasible configuration</span>';
+    verdict = '<strong>Infeasible:</strong> ' + infeasibleReason;
+  } else if (actualBPSM === 0) {
+    gridLaunch = '<span class="cmt">// infeasible configuration</span>';
+    verdict = '<strong>Infeasible:</strong> no blocks fit on an SM with these settings. Shrink TILE, registers, or block size.';
+  } else {
+    // Pick grid: oversubscribe 2-4x if problem is large
+    let gridBlocks;
+    let strategy;
+    if (outputTiles <= concurrent) {
+      gridBlocks = outputTiles;
+      strategy = `Problem fits on-chip in one wave &mdash; launch exactly <strong>${fmt(outputTiles)}</strong> blocks (no grid-stride needed).`;
+    } else if (ratio <= 8) {
+      gridBlocks = outputTiles;
+      strategy = `Problem is a few waves of work &mdash; launch all <strong>${fmt(outputTiles)}</strong> blocks and let the scheduler drain them.`;
+    } else {
+      gridBlocks = 2 * concurrent;
+      const perBlock = Math.ceil(outputTiles / gridBlocks);
+      strategy = `Problem is <strong>${ratio.toFixed(0)}&times;</strong> larger than the chip &mdash; launch <strong>${fmt(gridBlocks)}</strong> blocks (2&times; concurrent) and use grid-stride. Each block will iterate over ~${perBlock} output tiles.`;
+    }
+
+    // Shape the grid into a 2D block
+    const gx = Math.max(1, Math.min(tilesX, Math.ceil(Math.sqrt(gridBlocks * tilesX / Math.max(tilesY,1)))));
+    const gy = Math.max(1, Math.ceil(gridBlocks / gx));
+
+    gridLaunch =
+      '<span class="kw">dim3</span> block(<span class="num">' + kn.tile + '</span>, <span class="num">' + kn.tile + '</span>);' +
+      '          <span class="cmt">// ' + tpb + ' threads, TILE&times;TILE</span>\n' +
+      '<span class="kw">dim3</span> grid(<span class="num">'  + gx      + '</span>, <span class="num">' + gy      + '</span>);' +
+      '          <span class="cmt">// ' + (gx*gy) + ' blocks total</span>\n' +
+      'matMulTiledStrided&lt;&lt;&lt;grid, block&gt;&gt;&gt;(A, B, C, ' +
+        '<span class="num">' + kn.M + '</span>, ' +
+        '<span class="num">' + kn.N + '</span>, ' +
+        '<span class="num">' + kn.K + '</span>);';
+
+    // Build the verdict
+    const occPct = occupancy * 100;
+    let occNote;
+    if (occPct >= 75)      occNote = '<strong>Great occupancy</strong> &mdash; the scheduler has plenty of warps to hide memory latency.';
+    else if (occPct >= 50) occNote = '<strong>Okay occupancy</strong> &mdash; latency hiding works but has less headroom. Consider a smaller block or tile.';
+    else                   occNote = '<strong>Low occupancy</strong> &mdash; the chip is likely underutilized. Try smaller TILE, smaller block, or fewer registers per thread.';
+
+    verdict = strategy + '<br><br>' + occNote;
+  }
+
+  $('launchCode').innerHTML = gridLaunch;
+  $('verdict').innerHTML = verdict;
+}
+
+// ----- wire up events -----
+document.addEventListener('DOMContentLoaded', () => {
+  $('gpuPreset').addEventListener('change', applyPreset);
+  const watched = [
+    'hwSMs','hwMaxTPB','hwMaxTPSM','hwMaxBPSM','hwShared','hwRegs',
+    'tileSize','regsPerThread','bytesPerElem','dimM','dimK','dimN'
+  ];
+  for (const id of watched) {
+    $(id).addEventListener('input', () => {
+      // if the user edits any hardware field, switch GPU to "custom"
+      if (id.startsWith('hw')) $('gpuPreset').value = 'custom';
+      recompute();
+    });
+  }
+  applyPreset();
+  recompute();
+});
+</script>
+
+
+<div id="ai-disclaimer-banner" style="margin:60px auto 40px;padding-top:20px;border-top:1px solid #ddd;max-width:880px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10.5pt;color:#555;line-height:1.6">
+  <strong style="color:#333">About this page.</strong>
+  The prose here was <em>written by AI</em> (Claude). The questions, the learning path, and the decisions about what to include are mine &mdash; I wanted to learn CUDA properly and used AI to help me turn my scratch notes into readable chapters. Please cross-reference with authoritative sources (<a href="https://docs.nvidia.com/cuda/" style="color:#0066cc">NVIDIA CUDA Programming Guide</a>, the <em>Programming Massively Parallel Processors</em> textbook, etc.) before relying on anything here for production work.
+  &nbsp;&middot;&nbsp; <a href="index.html" style="color:#0066cc">&larr; CUDA chapter index</a>
+</div>
+</body>
+</html>

@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Appendix: A Worked Example — Combined Tiled + Grid-Strided Matmul on GT200</title>
+<style>
+  @page {
+    size: A4;
+    margin: 2.5cm 2cm;
+  }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.7;
+    color: #1a1a1a;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 30px;
+    background: #fff;
+  }
+  .chapter-number {
+    font-size: 14pt;
+    color: #666;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    border-top: 3px solid #333;
+    padding-top: 20px;
+  }
+  h1 {
+    font-size: 26pt;
+    margin-top: 5px;
+    margin-bottom: 30px;
+    color: #111;
+    border-bottom: 1px solid #999;
+    padding-bottom: 15px;
+  }
+  h2 {
+    font-size: 18pt;
+    margin-top: 40px;
+    margin-bottom: 15px;
+    color: #222;
+    border-left: 4px solid #0066cc;
+    padding-left: 12px;
+  }
+  h3 {
+    font-size: 14pt;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  h4 {
+    font-size: 12pt;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: #444;
+    font-style: italic;
+  }
+  p {
+    text-align: justify;
+    margin-bottom: 12px;
+  }
+  pre {
+    background: #f5f5f0;
+    border: 1px solid #ddd;
+    border-left: 4px solid #0066cc;
+    padding: 15px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: 3px;
+  }
+  code {
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    background: #f0f0eb;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .diagram {
+    margin: 25px auto;
+    padding: 20px;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+  .diagram-caption {
+    font-style: italic;
+    font-size: 10pt;
+    color: #555;
+    margin-top: 8px;
+    text-align: center;
+  }
+  .diagram svg {
+    max-width: 100%;
+  }
+  .key-concept {
+    background: #e8f4f8;
+    border: 2px solid #0066cc;
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin: 25px 0;
+    page-break-inside: avoid;
+  }
+  .key-concept-title {
+    font-weight: bold;
+    color: #0066cc;
+    font-size: 11pt;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .note-box {
+    background: #fff8e1;
+    border: 1px solid #f0c040;
+    border-left: 4px solid #f0a000;
+    border-radius: 3px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    page-break-inside: avoid;
+  }
+  .note-box-title {
+    font-weight: bold;
+    color: #b37700;
+    margin-bottom: 5px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 10.5pt;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    text-align: center;
+  }
+  th {
+    background: #e0e8f0;
+    font-weight: bold;
+    color: #333;
+  }
+  tr:nth-child(even) {
+    background: #f8f8f5;
+  }
+  ol, ul {
+    margin-bottom: 15px;
+    padding-left: 30px;
+  }
+  li {
+    margin-bottom: 6px;
+  }
+  .epigraph {
+    font-style: italic;
+    color: #555;
+    border-left: 3px solid #aaa;
+    padding-left: 15px;
+    margin: 30px 40px;
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+  .epigraph-author {
+    text-align: right;
+    font-size: 10pt;
+    color: #777;
+  }
+  .page-break {
+    page-break-before: always;
+  }
+  .analogy {
+    background: #f0fff0;
+    border: 1px solid #7cb97c;
+    border-left: 4px solid #2e8b2e;
+    border-radius: 3px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    page-break-inside: avoid;
+  }
+  .analogy-title {
+    font-weight: bold;
+    color: #2e8b2e;
+    margin-bottom: 5px;
+  }
+  .trace-table td {
+    font-family: 'Courier New', monospace;
+    font-size: 9.5pt;
+  }
+  .toc {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    padding: 20px 30px;
+    margin: 30px 0;
+    border-radius: 5px;
+  }
+  .toc h3 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+  }
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+    padding-left: 0;
+  }
+  .toc > ol > li {
+    counter-increment: toc;
+    margin-bottom: 4px;
+  }
+  .toc > ol > li::before {
+    content: counter(toc) ". ";
+    font-weight: bold;
+    color: #0066cc;
+  }
+  .toc a {
+    text-decoration: none;
+    color: #333;
+  }
+  .highlight-row {
+    background: #ffffcc !important;
+    font-weight: bold;
+  }
+  .valid-cell { background: #c8e6c8 !important; }
+  .oob-cell { background: #ffcdd2 !important; color: #888 !important; }
+</style>
+</head>
+<body>
+
+<h1>A Worked Example: Combined Tiled + Grid-Strided Matmul on GT200</h1>
+
+<div class="epigraph">
+  "Nothing clarifies an abstraction like a small, concrete example you can trace by hand on the back of an envelope."
+  <div class="epigraph-author">— every good engineering teacher, ever</div>
+</div>
+
+<p>
+This appendix ties the previous two chapters together with a single end-to-end worked example. We will:
+</p>
+
+<ol>
+  <li>Pin down the hardware we are writing for — the venerable NVIDIA <strong>GT200</strong> (Tesla architecture, 2008; the chip behind the GeForce GTX 280) — so that every launch parameter is grounded in real limits.</li>
+  <li>Set up a <em>small, rectangular</em> matrix multiplication whose dimensions do <em>not</em> align neatly with the tile size, so that boundary edge cases are unavoidable.</li>
+  <li>Walk, by hand, through a kernel that uses both a <strong>block-level grid-stride loop</strong> (outer) and a <strong>thread-level shared-memory tile</strong> (inner), computing one real output value step by step.</li>
+</ol>
+
+<div class="toc">
+  <h3>Contents of This Appendix</h3>
+  <ol>
+    <li>Why GT200?</li>
+    <li>The GT200 Hardware Budget
+      <ol>
+        <li>The Spec Sheet</li>
+        <li>What the Limits Mean for a Kernel Launch</li>
+        <li>Why Grid-Stride Is Mandatory</li>
+      </ol>
+    </li>
+    <li>The Small Problem We Will Solve
+      <ol>
+        <li>Dimensions and Values</li>
+        <li>The Expected Answer (Computed by Hand)</li>
+      </ol>
+    </li>
+    <li>Choosing the Launch Configuration
+      <ol>
+        <li>Tile Size, Threads per Block, Blocks</li>
+        <li>The Resulting Tile Grid</li>
+      </ol>
+    </li>
+    <li>The OUTER Loop: Block-Level Grid-Stride
+      <ol>
+        <li>Who Owns Which Output Tile</li>
+        <li>Visualizing the Assignment</li>
+      </ol>
+    </li>
+    <li>The INNER Loop: Shared-Memory Tiling at a Boundary
+      <ol>
+        <li>Setting Up Tile (2, 3) — The Corner Case</li>
+        <li>Phase 0: Load (with padding) and Partial Multiply</li>
+        <li>Phase 1: Load Again and Accumulate</li>
+        <li>Write-Back with Bounds Check</li>
+      </ol>
+    </li>
+    <li>The Complete Kernel</li>
+    <li>End-to-End Trace Tables
+      <ol>
+        <li>A Clean Interior Tile — Tile (0, 0)</li>
+        <li>The Hardest Tile — Tile (2, 3)</li>
+      </ol>
+    </li>
+    <li>Summary: Two Axes, One Kernel</li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2>1. Why GT200?</h2>
+
+<p>
+Modern GPUs (Hopper, Ampere, Ada) have specs so generous that the grid-stride pattern often <em>looks</em> optional — you can simply launch one block per output tile and the hardware shrugs. On an older GPU like the GT200, the budget is tight enough that the combined pattern isn't a stylistic preference, it's an <em>engineering necessity</em>. Grounding the example on GT200 makes the "why" of every launch choice visible.
+</p>
+
+<div class="note-box">
+  <div class="note-box-title">GT200 In One Sentence</div>
+  Released June 2008, the GT200 is the chip at the heart of the GeForce GTX 280 / 285 and the Tesla C1060 / S1070. It has 30 streaming multiprocessors, each hosting 8 CUDA cores, for a total of 240 CUDA cores. Compute capability 1.3.
+</div>
+
+<!-- ================================================================== -->
+<h2>2. The GT200 Hardware Budget</h2>
+
+<h3>2.1 The Spec Sheet</h3>
+
+<table>
+  <tr><th>Resource</th><th>GT200 limit (CC 1.3)</th><th>Why it matters</th></tr>
+  <tr><td>Streaming Multiprocessors (SMs)</td><td><strong>30</strong></td><td>Each SM runs blocks independently. Want ≥ 30 live blocks to use them all.</td></tr>
+  <tr><td>Max threads per block</td><td><strong>512</strong></td><td>Hard ceiling on <code>blockDim.x × blockDim.y × blockDim.z</code>.</td></tr>
+  <tr><td>Max resident threads per SM</td><td><strong>1,024</strong></td><td>Occupancy cap. 1,024 = 32 warps of 32 threads.</td></tr>
+  <tr><td>Max resident blocks per SM</td><td><strong>8</strong></td><td>So blocks of 128 threads × 8 = 1,024 fits perfectly.</td></tr>
+  <tr><td>Warp size</td><td><strong>32</strong></td><td>Fundamental scheduling unit. Always true across all CC.</td></tr>
+  <tr><td>Shared memory per SM</td><td><strong>16 KB</strong></td><td>If each block uses 8 KB, only 2 blocks fit per SM.</td></tr>
+  <tr><td>Registers per SM (32-bit)</td><td><strong>16,384</strong></td><td>Divided among resident threads.</td></tr>
+  <tr><td>Max grid dim.x, grid dim.y</td><td><strong>65,535</strong></td><td>Grids bigger than this in any axis are impossible.</td></tr>
+  <tr><td>Max grid dim.z</td><td><strong>1</strong></td><td>No 3D grids in CC 1.x. (3D grids arrived in CC 2.0.)</td></tr>
+  <tr><td>Global memory</td><td><strong>1 GB</strong> (GTX 280)</td><td>Everything lives here unless you move it to shared.</td></tr>
+</table>
+
+<h3>2.2 What the Limits Mean for a Kernel Launch</h3>
+
+<p>
+Combine the limits and the picture tightens quickly:
+</p>
+
+<ul>
+  <li><strong>Maximum concurrent threads on the chip:</strong> 30 SMs × 1,024 threads/SM = <strong>30,720 threads</strong>. That's the total amount of real parallelism GT200 can field at any instant. A kernel that needs more "work units" than this must, by definition, serialize some work.</li>
+  <li><strong>Ideal threads per block:</strong> Multiples of 32 (one warp). Common sweet spots: 128, 256, or 512. For tiled matmul we usually pick 16×16 = 256 (a 16-wide warp alignment that keeps memory coalesced).</li>
+  <li><strong>Blocks per SM for max occupancy:</strong> 1,024 ÷ 256 = 4 blocks of 256 threads each. (The 8-blocks-per-SM ceiling kicks in for smaller blocks.)</li>
+  <li><strong>Target concurrent blocks on the chip:</strong> 30 SMs × 4 blocks/SM = <strong>120 blocks</strong>. This is the rough "sweet spot" launch size for a well-tuned matmul on GT200.</li>
+</ul>
+
+<div class="diagram">
+  <svg width="720" height="260" viewBox="0 0 720 260">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">GT200: The Chip in One Picture</text>
+
+    <!-- Chip outline -->
+    <rect x="30" y="40" width="660" height="200" fill="#f8f8f0" stroke="#666" stroke-width="2" rx="8"/>
+    <text x="45" y="60" font-size="11" font-weight="bold" fill="#333">GT200 / GeForce GTX 280 — compute capability 1.3</text>
+
+    <!-- 30 SMs shown as a 5×6 grid -->
+    <g font-size="7" text-anchor="middle">
+      <!-- Row 1 -->
+      <g fill="#e3f2fd" stroke="#1565c0" stroke-width="1">
+        <rect x="55" y="80" width="60" height="26" rx="3"/>
+        <rect x="120" y="80" width="60" height="26" rx="3"/>
+        <rect x="185" y="80" width="60" height="26" rx="3"/>
+        <rect x="250" y="80" width="60" height="26" rx="3"/>
+        <rect x="315" y="80" width="60" height="26" rx="3"/>
+        <rect x="380" y="80" width="60" height="26" rx="3"/>
+        <rect x="445" y="80" width="60" height="26" rx="3"/>
+        <rect x="510" y="80" width="60" height="26" rx="3"/>
+        <rect x="575" y="80" width="60" height="26" rx="3"/>
+      </g>
+      <text x="85" y="97" fill="#0d47a1">SM 0</text>
+      <text x="150" y="97" fill="#0d47a1">SM 1</text>
+      <text x="215" y="97" fill="#0d47a1">SM 2</text>
+      <text x="280" y="97" fill="#0d47a1">SM 3</text>
+      <text x="345" y="97" fill="#0d47a1">SM 4</text>
+      <text x="410" y="97" fill="#0d47a1">SM 5</text>
+      <text x="475" y="97" fill="#0d47a1">SM 6</text>
+      <text x="540" y="97" fill="#0d47a1">SM 7</text>
+      <text x="605" y="97" fill="#0d47a1">SM 8</text>
+
+      <!-- Row 2 -->
+      <g fill="#e3f2fd" stroke="#1565c0" stroke-width="1">
+        <rect x="55" y="110" width="60" height="26" rx="3"/>
+        <rect x="120" y="110" width="60" height="26" rx="3"/>
+        <rect x="185" y="110" width="60" height="26" rx="3"/>
+        <rect x="250" y="110" width="60" height="26" rx="3"/>
+        <rect x="315" y="110" width="60" height="26" rx="3"/>
+        <rect x="380" y="110" width="60" height="26" rx="3"/>
+        <rect x="445" y="110" width="60" height="26" rx="3"/>
+        <rect x="510" y="110" width="60" height="26" rx="3"/>
+        <rect x="575" y="110" width="60" height="26" rx="3"/>
+      </g>
+      <text x="85" y="127" fill="#0d47a1">SM 9</text>
+      <text x="150" y="127" fill="#0d47a1">SM 10</text>
+      <text x="215" y="127" fill="#0d47a1">SM 11</text>
+      <text x="280" y="127" fill="#0d47a1">SM 12</text>
+      <text x="345" y="127" fill="#0d47a1">SM 13</text>
+      <text x="410" y="127" fill="#0d47a1">SM 14</text>
+      <text x="475" y="127" fill="#0d47a1">SM 15</text>
+      <text x="540" y="127" fill="#0d47a1">SM 16</text>
+      <text x="605" y="127" fill="#0d47a1">SM 17</text>
+
+      <!-- Row 3 -->
+      <g fill="#e3f2fd" stroke="#1565c0" stroke-width="1">
+        <rect x="55" y="140" width="60" height="26" rx="3"/>
+        <rect x="120" y="140" width="60" height="26" rx="3"/>
+        <rect x="185" y="140" width="60" height="26" rx="3"/>
+        <rect x="250" y="140" width="60" height="26" rx="3"/>
+        <rect x="315" y="140" width="60" height="26" rx="3"/>
+        <rect x="380" y="140" width="60" height="26" rx="3"/>
+        <rect x="445" y="140" width="60" height="26" rx="3"/>
+        <rect x="510" y="140" width="60" height="26" rx="3"/>
+        <rect x="575" y="140" width="60" height="26" rx="3"/>
+      </g>
+      <text x="85" y="157" fill="#0d47a1">SM 18</text>
+      <text x="150" y="157" fill="#0d47a1">SM 19</text>
+      <text x="215" y="157" fill="#0d47a1">SM 20</text>
+      <text x="280" y="157" fill="#0d47a1">SM 21</text>
+      <text x="345" y="157" fill="#0d47a1">SM 22</text>
+      <text x="410" y="157" fill="#0d47a1">SM 23</text>
+      <text x="475" y="157" fill="#0d47a1">SM 24</text>
+      <text x="540" y="157" fill="#0d47a1">SM 25</text>
+      <text x="605" y="157" fill="#0d47a1">SM 26</text>
+
+      <!-- Last row: SM 27, 28, 29 -->
+      <g fill="#e3f2fd" stroke="#1565c0" stroke-width="1">
+        <rect x="185" y="170" width="60" height="26" rx="3"/>
+        <rect x="250" y="170" width="60" height="26" rx="3"/>
+        <rect x="315" y="170" width="60" height="26" rx="3"/>
+      </g>
+      <text x="215" y="187" fill="#0d47a1">SM 27</text>
+      <text x="280" y="187" fill="#0d47a1">SM 28</text>
+      <text x="345" y="187" fill="#0d47a1">SM 29</text>
+    </g>
+
+    <!-- Legend / stats -->
+    <g font-size="9" fill="#333">
+      <text x="45" y="218">Per-SM: 1,024 resident threads · 8 resident blocks · 16 KB shared · 16 K registers · 8 CUDA cores</text>
+      <text x="45" y="232" font-weight="bold" fill="#c62828">Chip total: 30 SMs × 1,024 threads = 30,720 concurrent threads. Sweet spot launch ≈ 120 blocks of 256 threads.</text>
+    </g>
+  </svg>
+  <div class="diagram-caption">Figure 2.1 — GT200 chip: 30 streaming multiprocessors. Each SM is its own small parallel processor. A kernel launch distributes blocks across these 30 SMs; anything beyond ~120 live blocks has to queue.</div>
+</div>
+
+<h3>2.3 Why Grid-Stride Is Mandatory</h3>
+
+<p>
+Consider a modest matrix multiplication, <em>C</em> = <em>A × B</em>, with <em>N</em> = 4,096 and tile size 16. The number of output tiles is (4,096 / 16)² = 256² = <strong>65,536 output tiles</strong>.
+</p>
+
+<p>
+If we tried to launch one block per output tile — the "naïve one-block-per-tile" approach — we would need a <code>dim3</code> grid of 256 × 256 blocks. That fits under the 65,535 limit in each axis but it is deeply <em>wasteful</em>:
+</p>
+
+<ul>
+  <li>The GPU has physical room for only ~120 concurrent blocks.</li>
+  <li>The other 65,416 blocks sit queued, waiting for SMs to free up.</li>
+  <li>Each block carries small fixed scheduling overhead. 65,536 blocks of overhead vs. 120 blocks of overhead is three orders of magnitude of waste.</li>
+</ul>
+
+<p>
+The alternative is to launch the sweet-spot number of blocks (<strong>~120</strong>) and have each block iterate through <em>multiple</em> output tiles using a <strong>grid-stride loop at the block level</strong>. Each block does roughly 65,536 ÷ 120 ≈ <strong>546 output tiles</strong> during its lifetime. This is the combined pattern. Grid-stride at the block level handles the "too many output tiles" problem; shared-memory tiling inside each tile handles the "redundant global memory reads" problem.
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">The Combined Pattern on GT200</div>
+  <p>Launch ~120 blocks of 256 threads. Each block owns a 16 × 16 output tile at a time, and uses a <em>grid-stride loop</em> to advance to its next output tile after finishing the current one. Within each output tile, the 256 threads cooperate to load shared-memory tiles of A and B, step through the K dimension in phases, and accumulate the dot product. Two loops, two patterns, one kernel.</p>
+</div>
+
+<!-- ================================================================== -->
+<h2>3. The Small Problem We Will Solve</h2>
+
+<p>
+To make every memory movement traceable by hand, we scale the problem down by three orders of magnitude. The <em>pattern</em> is identical to the 4,096 × 4,096 case; the <em>numbers</em> are small enough to pencil out.
+</p>
+
+<h3>3.1 Dimensions and Values</h3>
+
+<ul>
+  <li><strong>Matrix A</strong> is <em>M × K</em> = <strong>5 × 4</strong></li>
+  <li><strong>Matrix B</strong> is <em>K × N</em> = <strong>4 × 7</strong></li>
+  <li><strong>Matrix C = A × B</strong> is <em>M × N</em> = <strong>5 × 7</strong></li>
+  <li><strong>Tile size</strong> <em>T</em> = <strong>2</strong></li>
+</ul>
+
+<p>
+Why this exact shape?
+</p>
+<ul>
+  <li><strong>M = 5 is not divisible by T = 2</strong> → the bottom row of output tiles is a <em>partial</em> tile (only row 4 is valid; "row 5" is off the end of C).</li>
+  <li><strong>N = 7 is not divisible by T = 2</strong> → the right column of output tiles is also partial (only col 6 is valid).</li>
+  <li><strong>K = 4 IS divisible by T = 2</strong> → the inner "phases" loop is clean (exactly 2 phases), which removes a distraction while we focus on the row/col edges.</li>
+  <li>Non-square, rectangular dimensions force the code to distinguish M, N, K — a common source of bugs.</li>
+</ul>
+
+<div class="diagram">
+  <svg width="720" height="310" viewBox="0 0 720 310">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">The Inputs and the Expected Output (All Values)</text>
+
+    <!-- Matrix A : 5 rows × 4 cols, at x=30-178 -->
+    <text x="104" y="48" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565c0">A (5 × 4)</text>
+    <g font-size="10" text-anchor="middle" font-family="Courier New">
+      <!-- column headers -->
+      <text x="60" y="63" font-size="8" fill="#666">k=0</text>
+      <text x="90" y="63" font-size="8" fill="#666">k=1</text>
+      <text x="120" y="63" font-size="8" fill="#666">k=2</text>
+      <text x="150" y="63" font-size="8" fill="#666">k=3</text>
+      <!-- row labels and cells -->
+      <text x="38" y="83" font-size="8" fill="#666">r=0</text>
+      <rect x="45" y="68" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="60" y="82">1</text>
+      <rect x="75" y="68" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="90" y="82">2</text>
+      <rect x="105" y="68" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="120" y="82">3</text>
+      <rect x="135" y="68" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="150" y="82">4</text>
+
+      <text x="38" y="103" font-size="8" fill="#666">r=1</text>
+      <rect x="45" y="88" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="60" y="102">5</text>
+      <rect x="75" y="88" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="90" y="102">6</text>
+      <rect x="105" y="88" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="120" y="102">7</text>
+      <rect x="135" y="88" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="150" y="102">8</text>
+
+      <text x="38" y="123" font-size="8" fill="#666">r=2</text>
+      <rect x="45" y="108" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="60" y="122">9</text>
+      <rect x="75" y="108" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="90" y="122">10</text>
+      <rect x="105" y="108" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="120" y="122">11</text>
+      <rect x="135" y="108" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="150" y="122">12</text>
+
+      <text x="38" y="143" font-size="8" fill="#666">r=3</text>
+      <rect x="45" y="128" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="60" y="142">13</text>
+      <rect x="75" y="128" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="90" y="142">14</text>
+      <rect x="105" y="128" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="120" y="142">15</text>
+      <rect x="135" y="128" width="30" height="20" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="150" y="142">16</text>
+
+      <text x="38" y="163" font-size="8" fill="#666">r=4</text>
+      <rect x="45" y="148" width="30" height="20" fill="#bbdefb" stroke="#1565c0"/>
+      <text x="60" y="162">17</text>
+      <rect x="75" y="148" width="30" height="20" fill="#bbdefb" stroke="#1565c0"/>
+      <text x="90" y="162">18</text>
+      <rect x="105" y="148" width="30" height="20" fill="#bbdefb" stroke="#1565c0"/>
+      <text x="120" y="162">19</text>
+      <rect x="135" y="148" width="30" height="20" fill="#bbdefb" stroke="#1565c0"/>
+      <text x="150" y="162">20</text>
+    </g>
+
+    <!-- × -->
+    <text x="200" y="118" text-anchor="middle" font-size="24" font-weight="bold" fill="#333">×</text>
+
+    <!-- Matrix B : 4 rows × 7 cols at x=225-460 -->
+    <text x="340" y="48" text-anchor="middle" font-size="11" font-weight="bold" fill="#c62828">B (4 × 7)</text>
+    <g font-size="10" text-anchor="middle" font-family="Courier New">
+      <text x="245" y="63" font-size="8" fill="#666">c=0</text>
+      <text x="275" y="63" font-size="8" fill="#666">c=1</text>
+      <text x="305" y="63" font-size="8" fill="#666">c=2</text>
+      <text x="335" y="63" font-size="8" fill="#666">c=3</text>
+      <text x="365" y="63" font-size="8" fill="#666">c=4</text>
+      <text x="395" y="63" font-size="8" fill="#666">c=5</text>
+      <text x="425" y="63" font-size="8" fill="#666">c=6</text>
+
+      <!-- Row k=0: all 1s -->
+      <text x="225" y="83" font-size="8" fill="#666">k=0</text>
+      <rect x="230" y="68" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="245" y="82">1</text>
+      <rect x="260" y="68" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="275" y="82">1</text>
+      <rect x="290" y="68" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="305" y="82">1</text>
+      <rect x="320" y="68" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="335" y="82">1</text>
+      <rect x="350" y="68" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="365" y="82">1</text>
+      <rect x="380" y="68" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="395" y="82">1</text>
+      <rect x="410" y="68" width="30" height="20" fill="#ef9a9a" stroke="#c62828"/><text x="425" y="82">1</text>
+
+      <!-- Row k=1: all 2s -->
+      <text x="225" y="103" font-size="8" fill="#666">k=1</text>
+      <rect x="230" y="88" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="245" y="102">2</text>
+      <rect x="260" y="88" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="275" y="102">2</text>
+      <rect x="290" y="88" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="305" y="102">2</text>
+      <rect x="320" y="88" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="335" y="102">2</text>
+      <rect x="350" y="88" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="365" y="102">2</text>
+      <rect x="380" y="88" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="395" y="102">2</text>
+      <rect x="410" y="88" width="30" height="20" fill="#ef9a9a" stroke="#c62828"/><text x="425" y="102">2</text>
+
+      <!-- Row k=2: all 3s -->
+      <text x="225" y="123" font-size="8" fill="#666">k=2</text>
+      <rect x="230" y="108" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="245" y="122">3</text>
+      <rect x="260" y="108" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="275" y="122">3</text>
+      <rect x="290" y="108" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="305" y="122">3</text>
+      <rect x="320" y="108" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="335" y="122">3</text>
+      <rect x="350" y="108" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="365" y="122">3</text>
+      <rect x="380" y="108" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="395" y="122">3</text>
+      <rect x="410" y="108" width="30" height="20" fill="#ef9a9a" stroke="#c62828"/><text x="425" y="122">3</text>
+
+      <!-- Row k=3: all 4s -->
+      <text x="225" y="143" font-size="8" fill="#666">k=3</text>
+      <rect x="230" y="128" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="245" y="142">4</text>
+      <rect x="260" y="128" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="275" y="142">4</text>
+      <rect x="290" y="128" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="305" y="142">4</text>
+      <rect x="320" y="128" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="335" y="142">4</text>
+      <rect x="350" y="128" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="365" y="142">4</text>
+      <rect x="380" y="128" width="30" height="20" fill="#ffebee" stroke="#c62828"/><text x="395" y="142">4</text>
+      <rect x="410" y="128" width="30" height="20" fill="#ef9a9a" stroke="#c62828"/><text x="425" y="142">4</text>
+    </g>
+    <text x="340" y="180" text-anchor="middle" font-size="9" fill="#555" font-style="italic">(col 6 — the rightmost — highlighted to foreshadow the corner case)</text>
+
+    <!-- = -->
+    <text x="490" y="118" text-anchor="middle" font-size="24" font-weight="bold" fill="#333">=</text>
+
+    <!-- Matrix C : 5 rows × 7 cols, at x=515-725 -->
+    <text x="620" y="48" text-anchor="middle" font-size="11" font-weight="bold" fill="#2e7d32">C (5 × 7)</text>
+    <g font-size="9" text-anchor="middle" font-family="Courier New">
+      <!-- Row 0: all 30 -->
+      <rect x="515" y="68" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="530" y="82">30</text>
+      <rect x="545" y="68" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="560" y="82">30</text>
+      <rect x="575" y="68" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="590" y="82">30</text>
+      <rect x="605" y="68" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="620" y="82">30</text>
+      <rect x="635" y="68" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="650" y="82">30</text>
+      <rect x="665" y="68" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="680" y="82">30</text>
+      <rect x="695" y="68" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="710" y="82">30</text>
+
+      <!-- Row 1: all 70 -->
+      <rect x="515" y="88" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="530" y="102">70</text>
+      <rect x="545" y="88" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="560" y="102">70</text>
+      <rect x="575" y="88" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="590" y="102">70</text>
+      <rect x="605" y="88" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="620" y="102">70</text>
+      <rect x="635" y="88" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="650" y="102">70</text>
+      <rect x="665" y="88" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="680" y="102">70</text>
+      <rect x="695" y="88" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="710" y="102">70</text>
+
+      <!-- Row 2: all 110 -->
+      <rect x="515" y="108" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="530" y="122">110</text>
+      <rect x="545" y="108" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="560" y="122">110</text>
+      <rect x="575" y="108" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="590" y="122">110</text>
+      <rect x="605" y="108" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="620" y="122">110</text>
+      <rect x="635" y="108" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="650" y="122">110</text>
+      <rect x="665" y="108" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="680" y="122">110</text>
+      <rect x="695" y="108" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="710" y="122">110</text>
+
+      <!-- Row 3: all 150 -->
+      <rect x="515" y="128" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="530" y="142">150</text>
+      <rect x="545" y="128" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="560" y="142">150</text>
+      <rect x="575" y="128" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="590" y="142">150</text>
+      <rect x="605" y="128" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="620" y="142">150</text>
+      <rect x="635" y="128" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="650" y="142">150</text>
+      <rect x="665" y="128" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="680" y="142">150</text>
+      <rect x="695" y="128" width="30" height="20" fill="#c8e6c8" stroke="#2e7d32"/><text x="710" y="142">150</text>
+
+      <!-- Row 4: all 190 -->
+      <rect x="515" y="148" width="30" height="20" fill="#a5d6a7" stroke="#2e7d32"/><text x="530" y="162">190</text>
+      <rect x="545" y="148" width="30" height="20" fill="#a5d6a7" stroke="#2e7d32"/><text x="560" y="162">190</text>
+      <rect x="575" y="148" width="30" height="20" fill="#a5d6a7" stroke="#2e7d32"/><text x="590" y="162">190</text>
+      <rect x="605" y="148" width="30" height="20" fill="#a5d6a7" stroke="#2e7d32"/><text x="620" y="162">190</text>
+      <rect x="635" y="148" width="30" height="20" fill="#a5d6a7" stroke="#2e7d32"/><text x="650" y="162">190</text>
+      <rect x="665" y="148" width="30" height="20" fill="#a5d6a7" stroke="#2e7d32"/><text x="680" y="162">190</text>
+      <rect x="695" y="148" width="30" height="20" fill="#66bb6a" stroke="#2e7d32" stroke-width="2"/><text x="710" y="162" fill="#fff" font-weight="bold">190</text>
+    </g>
+    <text x="620" y="183" text-anchor="middle" font-size="9" fill="#555" font-style="italic">(we will hand-trace the dark green cell: C[4, 6] = 190)</text>
+
+    <!-- Summary of the row formula -->
+    <rect x="30" y="200" width="660" height="98" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="6"/>
+    <text x="360" y="222" text-anchor="middle" font-size="12" font-weight="bold" fill="#b37700">How Each Output Cell Is Computed</text>
+    <text x="45" y="245" font-size="10" fill="#333">C[r, c] = A[r,0]·B[0,c] + A[r,1]·B[1,c] + A[r,2]·B[2,c] + A[r,3]·B[3,c]</text>
+    <text x="45" y="263" font-size="10" fill="#333">Since every row of B is constant and every column of B is the same across rows, the result depends only on the row of A:</text>
+    <text x="45" y="281" font-size="10" fill="#333" font-family="Courier New">C[r, c] = A[r,0]·1 + A[r,1]·2 + A[r,2]·3 + A[r,3]·4  &nbsp; → &nbsp; row 0: 30, row 1: 70, row 2: 110, row 3: 150, row 4: 190.</text>
+  </svg>
+  <div class="diagram-caption">Figure 3.1 — The concrete inputs we will trace. B is constructed so that every column of B is identical, which makes every column of C identical too. This isn't a limitation of the algorithm; it's a choice that makes hand-verification trivial — we only need to remember one number per row of C.</div>
+</div>
+
+<h3>3.2 The Expected Answer</h3>
+
+<p>
+Because every column of <em>B</em> is identical (col 0 = col 1 = ... = col 6), every column of <em>C</em> is identical too. Row <em>r</em> of <em>C</em> always equals 1·<em>A</em>[<em>r</em>,0] + 2·<em>A</em>[<em>r</em>,1] + 3·<em>A</em>[<em>r</em>,2] + 4·<em>A</em>[<em>r</em>,3]. Plugging in:
+</p>
+
+<table>
+  <tr><th>Row of A</th><th>Formula</th><th>Value for every column</th></tr>
+  <tr><td>r=0</td><td>1·1 + 2·2 + 3·3 + 4·4 = 1 + 4 + 9 + 16</td><td><strong>30</strong></td></tr>
+  <tr><td>r=1</td><td>5 + 12 + 21 + 32</td><td><strong>70</strong></td></tr>
+  <tr><td>r=2</td><td>9 + 20 + 33 + 48</td><td><strong>110</strong></td></tr>
+  <tr><td>r=3</td><td>13 + 28 + 45 + 64</td><td><strong>150</strong></td></tr>
+  <tr class="highlight-row"><td>r=4</td><td>17 + 36 + 57 + 80</td><td><strong>190</strong></td></tr>
+</table>
+
+<p>
+So the hardest cell to compute — the corner cell <em>C</em>[4, 6] — equals <strong>190</strong>. If our kernel produces that, we know it got the boundary handling right in both dimensions at once.
+</p>
+
+<!-- ================================================================== -->
+<h2>4. Choosing the Launch Configuration</h2>
+
+<h3>4.1 Tile Size, Threads per Block, Blocks</h3>
+
+<p>
+For this pedagogical example we pick:
+</p>
+
+<ul>
+  <li><strong>Tile size T = 2</strong>, so each shared-memory tile is 2 × 2 floats = 16 bytes. Two such tiles (<code>As</code>, <code>Bs</code>) = 32 bytes of shared memory per block — comically small, which is the point.</li>
+  <li><strong>Threads per block = (T, T) = (2, 2) = 4 threads</strong>. One thread per element of the output tile.</li>
+  <li><strong>Blocks = (2, 2) = 4 blocks</strong>. Deliberately small so that we have fewer blocks than output tiles, forcing the block-level grid-stride loop to do work.</li>
+</ul>
+
+<p>
+In a real workload on GT200 you would pick T = 16, giving 256 threads per block, and launch ~120 blocks. The math scales directly from what we are about to trace.
+</p>
+
+<h3>4.2 The Resulting Tile Grid</h3>
+
+<p>
+Output matrix C is 5 × 7. With T = 2, the number of row-tiles is <code>ceil(5/2) = 3</code> and the number of col-tiles is <code>ceil(7/2) = 4</code>. That gives us <strong>3 × 4 = 12 output tiles</strong>, some of which are partial because the dimensions aren't divisible by T.
+</p>
+
+<div class="diagram">
+  <svg width="720" height="300" viewBox="0 0 720 300">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">C (5 × 7) Carved Into 3 × 4 = 12 Output Tiles</text>
+
+    <!-- Tile grid: col-tiles 0..3 → cols 0..6 (+pad 7), row-tiles 0..2 → rows 0..4 (+pad 5) -->
+    <!-- Each cell is 40 wide × 32 tall. Grid at x=120, y=50. -->
+    <!-- Draw all cells first, then overlay thick tile borders -->
+    <g font-size="9" text-anchor="middle" font-family="Courier New">
+      <!-- Column headers c=0..6 and the pad "7" -->
+      <text x="100" y="70" font-size="9" fill="#666">↓ row</text>
+      <text x="140" y="55" font-size="9" fill="#666">c=0</text>
+      <text x="180" y="55" font-size="9" fill="#666">c=1</text>
+      <text x="220" y="55" font-size="9" fill="#666">c=2</text>
+      <text x="260" y="55" font-size="9" fill="#666">c=3</text>
+      <text x="300" y="55" font-size="9" fill="#666">c=4</text>
+      <text x="340" y="55" font-size="9" fill="#666">c=5</text>
+      <text x="380" y="55" font-size="9" fill="#666">c=6</text>
+      <text x="420" y="55" font-size="9" fill="#999">(c=7)</text>
+
+      <!-- Row 0 -->
+      <text x="100" y="82" font-size="9" fill="#666">r=0</text>
+      <rect x="120" y="68" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="140" y="86">30</text>
+      <rect x="160" y="68" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="180" y="86">30</text>
+      <rect x="200" y="68" width="40" height="28" fill="#90caf9" stroke="#1565c0"/><text x="220" y="86">30</text>
+      <rect x="240" y="68" width="40" height="28" fill="#90caf9" stroke="#1565c0"/><text x="260" y="86">30</text>
+      <rect x="280" y="68" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="300" y="86">30</text>
+      <rect x="320" y="68" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="340" y="86">30</text>
+      <rect x="360" y="68" width="40" height="28" fill="#90caf9" stroke="#1565c0"/><text x="380" y="86">30</text>
+      <rect x="400" y="68" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="420" y="86" fill="#999">pad</text>
+
+      <!-- Row 1 -->
+      <text x="100" y="114" font-size="9" fill="#666">r=1</text>
+      <rect x="120" y="96" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="140" y="114">70</text>
+      <rect x="160" y="96" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="180" y="114">70</text>
+      <rect x="200" y="96" width="40" height="28" fill="#90caf9" stroke="#1565c0"/><text x="220" y="114">70</text>
+      <rect x="240" y="96" width="40" height="28" fill="#90caf9" stroke="#1565c0"/><text x="260" y="114">70</text>
+      <rect x="280" y="96" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="300" y="114">70</text>
+      <rect x="320" y="96" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="340" y="114">70</text>
+      <rect x="360" y="96" width="40" height="28" fill="#90caf9" stroke="#1565c0"/><text x="380" y="114">70</text>
+      <rect x="400" y="96" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="420" y="114" fill="#999">pad</text>
+
+      <!-- Row 2 -->
+      <text x="100" y="146" font-size="9" fill="#666">r=2</text>
+      <rect x="120" y="124" width="40" height="28" fill="#ffcc80" stroke="#e65100"/><text x="140" y="142">110</text>
+      <rect x="160" y="124" width="40" height="28" fill="#ffcc80" stroke="#e65100"/><text x="180" y="142">110</text>
+      <rect x="200" y="124" width="40" height="28" fill="#ce93d8" stroke="#7b1fa2"/><text x="220" y="142">110</text>
+      <rect x="240" y="124" width="40" height="28" fill="#ce93d8" stroke="#7b1fa2"/><text x="260" y="142">110</text>
+      <rect x="280" y="124" width="40" height="28" fill="#ffcc80" stroke="#e65100"/><text x="300" y="142">110</text>
+      <rect x="320" y="124" width="40" height="28" fill="#ffcc80" stroke="#e65100"/><text x="340" y="142">110</text>
+      <rect x="360" y="124" width="40" height="28" fill="#ce93d8" stroke="#7b1fa2"/><text x="380" y="142">110</text>
+      <rect x="400" y="124" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="420" y="142" fill="#999">pad</text>
+
+      <!-- Row 3 -->
+      <text x="100" y="178" font-size="9" fill="#666">r=3</text>
+      <rect x="120" y="152" width="40" height="28" fill="#ffcc80" stroke="#e65100"/><text x="140" y="170">150</text>
+      <rect x="160" y="152" width="40" height="28" fill="#ffcc80" stroke="#e65100"/><text x="180" y="170">150</text>
+      <rect x="200" y="152" width="40" height="28" fill="#ce93d8" stroke="#7b1fa2"/><text x="220" y="170">150</text>
+      <rect x="240" y="152" width="40" height="28" fill="#ce93d8" stroke="#7b1fa2"/><text x="260" y="170">150</text>
+      <rect x="280" y="152" width="40" height="28" fill="#ffcc80" stroke="#e65100"/><text x="300" y="170">150</text>
+      <rect x="320" y="152" width="40" height="28" fill="#ffcc80" stroke="#e65100"/><text x="340" y="170">150</text>
+      <rect x="360" y="152" width="40" height="28" fill="#ce93d8" stroke="#7b1fa2"/><text x="380" y="170">150</text>
+      <rect x="400" y="152" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="420" y="170" fill="#999">pad</text>
+
+      <!-- Row 4 (partial tile row) -->
+      <text x="100" y="210" font-size="9" fill="#666">r=4</text>
+      <rect x="120" y="180" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="140" y="198">190</text>
+      <rect x="160" y="180" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="180" y="198">190</text>
+      <rect x="200" y="180" width="40" height="28" fill="#90caf9" stroke="#1565c0"/><text x="220" y="198">190</text>
+      <rect x="240" y="180" width="40" height="28" fill="#90caf9" stroke="#1565c0"/><text x="260" y="198">190</text>
+      <rect x="280" y="180" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="300" y="198">190</text>
+      <rect x="320" y="180" width="40" height="28" fill="#a5d6a7" stroke="#2e7d32"/><text x="340" y="198">190</text>
+      <rect x="360" y="180" width="40" height="28" fill="#66bb6a" stroke="#2e7d32" stroke-width="2"/><text x="380" y="198" fill="#fff" font-weight="bold">190</text>
+      <rect x="400" y="180" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="420" y="198" fill="#999">pad</text>
+
+      <!-- Row 5 (padded row) -->
+      <text x="100" y="228" font-size="9" fill="#999">(r=5)</text>
+      <rect x="120" y="208" width="40" height="22" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="140" y="223" fill="#999">pad</text>
+      <rect x="160" y="208" width="40" height="22" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="180" y="223" fill="#999">pad</text>
+      <rect x="200" y="208" width="40" height="22" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="220" y="223" fill="#999">pad</text>
+      <rect x="240" y="208" width="40" height="22" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="260" y="223" fill="#999">pad</text>
+      <rect x="280" y="208" width="40" height="22" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="300" y="223" fill="#999">pad</text>
+      <rect x="320" y="208" width="40" height="22" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="340" y="223" fill="#999">pad</text>
+      <rect x="360" y="208" width="40" height="22" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="380" y="223" fill="#999">pad</text>
+      <rect x="400" y="208" width="40" height="22" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/><text x="420" y="223" fill="#999">pad</text>
+    </g>
+
+    <!-- Thick tile borders (2x2 tiles) -->
+    <g fill="none" stroke="#000" stroke-width="2">
+      <!-- Row-tile 0: rows 0-1 → y=68..124 (height 56) -->
+      <rect x="120" y="68"  width="80" height="56"/> <!-- tile (0,0) -->
+      <rect x="200" y="68"  width="80" height="56"/> <!-- tile (0,1) -->
+      <rect x="280" y="68"  width="80" height="56"/> <!-- tile (0,2) -->
+      <rect x="360" y="68"  width="80" height="56"/> <!-- tile (0,3) partial -->
+      <!-- Row-tile 1: rows 2-3 → y=124..180 -->
+      <rect x="120" y="124" width="80" height="56"/>
+      <rect x="200" y="124" width="80" height="56"/>
+      <rect x="280" y="124" width="80" height="56"/>
+      <rect x="360" y="124" width="80" height="56"/>
+      <!-- Row-tile 2: row 4 (+pad row 5) → y=180..230 -->
+      <rect x="120" y="180" width="80" height="50"/>
+      <rect x="200" y="180" width="80" height="50"/>
+      <rect x="280" y="180" width="80" height="50"/>
+      <rect x="360" y="180" width="80" height="50"/>
+    </g>
+
+    <!-- Labels for the 12 tiles -->
+    <g font-size="8" fill="#333" text-anchor="middle">
+      <text x="160" y="63" font-weight="bold">tile(0,0)</text>
+      <text x="240" y="63" font-weight="bold">tile(0,1)</text>
+      <text x="320" y="63" font-weight="bold">tile(0,2)</text>
+      <text x="400" y="63" font-weight="bold" fill="#e65100">tile(0,3)·½</text>
+    </g>
+
+    <!-- Legend / block-ownership key on the right -->
+    <g transform="translate(480, 50)">
+      <text x="110" y="10" text-anchor="middle" font-size="11" font-weight="bold" fill="#333">Block Ownership</text>
+      <rect x="0" y="18" width="18" height="14" fill="#a5d6a7" stroke="#2e7d32"/>
+      <text x="25" y="29" font-size="9" fill="#333">Block (bx=0, by=0) — 4 tiles</text>
+      <rect x="0" y="36" width="18" height="14" fill="#90caf9" stroke="#1565c0"/>
+      <text x="25" y="47" font-size="9" fill="#333">Block (bx=1, by=0) — 4 tiles</text>
+      <rect x="0" y="54" width="18" height="14" fill="#ffcc80" stroke="#e65100"/>
+      <text x="25" y="65" font-size="9" fill="#333">Block (bx=0, by=1) — 2 tiles</text>
+      <rect x="0" y="72" width="18" height="14" fill="#ce93d8" stroke="#7b1fa2"/>
+      <text x="25" y="83" font-size="9" fill="#333">Block (bx=1, by=1) — 2 tiles</text>
+      <rect x="0" y="90" width="18" height="14" fill="#66bb6a" stroke="#2e7d32" stroke-width="2"/>
+      <text x="25" y="101" font-size="9" fill="#333">our trace target: C[4,6]</text>
+      <rect x="0" y="108" width="18" height="14" fill="#f5f5f5" stroke="#999" stroke-dasharray="3,2"/>
+      <text x="25" y="119" font-size="9" fill="#333">padded (out of bounds)</text>
+
+      <!-- summary numbers -->
+      <text x="0" y="145" font-size="9" fill="#333" font-weight="bold">Totals:</text>
+      <text x="0" y="160" font-size="9" fill="#333">· 12 output tiles</text>
+      <text x="0" y="174" font-size="9" fill="#333">· 4 blocks launched</text>
+      <text x="0" y="188" font-size="9" fill="#333">· 12 / 4 = 3 avg tiles/block</text>
+      <text x="0" y="202" font-size="9" fill="#333">· 4 tiles are partial (right/bottom)</text>
+    </g>
+
+    <text x="360" y="265" text-anchor="middle" font-size="10" fill="#555" font-style="italic">The 4 tiles on the right column (col-tile 3) and 4 tiles on the bottom row (row-tile 2) are partial —</text>
+    <text x="360" y="280" text-anchor="middle" font-size="10" fill="#555" font-style="italic">they contain padding cells that must not be written to C.</text>
+  </svg>
+  <div class="diagram-caption">Figure 4.1 — The output matrix C decomposed into 12 tiles. Each colored tile is owned by one of the 4 launched blocks. Because 5 is not a multiple of 2 and 7 is not either, row-tile 2 and col-tile 3 are only partially inside C — the rest is padding.</div>
+</div>
+
+<!-- ================================================================== -->
+<div class="page-break"></div>
+<h2>5. The OUTER Loop: Block-Level Grid-Stride</h2>
+
+<h3>5.1 Who Owns Which Output Tile</h3>
+
+<p>
+With 4 blocks for 12 tiles, each block must take on multiple tiles. The block-level grid-stride loop assigns them like this: block (<code>bx</code>, <code>by</code>) starts at output tile (<code>by</code>, <code>bx</code>) and then jumps forward by <code>gridDim.y</code> row-tiles and <code>gridDim.x</code> col-tiles respectively, until it runs off the end.
+</p>
+
+<pre>
+for (int tileY = blockIdx.y; tileY &lt; rowTiles; tileY += gridDim.y)   // outer-outer
+for (int tileX = blockIdx.x; tileX &lt; colTiles; tileX += gridDim.x)   // outer-inner
+    computeOneOutputTile(tileY, tileX);
+</pre>
+
+<p>
+Instantiating for <code>gridDim = (2, 2)</code>, <code>rowTiles = 3</code>, <code>colTiles = 4</code>:
+</p>
+
+<table class="trace-table">
+  <tr><th>Block (bx, by)</th><th>tileY values visited</th><th>tileX values visited</th><th>Output tiles owned</th><th>Count</th></tr>
+  <tr><td>(0, 0)</td><td>0, 2</td><td>0, 2</td><td>(0,0), (0,2), (2,0), (2,2)</td><td>4</td></tr>
+  <tr><td>(1, 0)</td><td>0, 2</td><td>1, 3</td><td>(0,1), (0,3), (2,1), (2,3)</td><td>4</td></tr>
+  <tr><td>(0, 1)</td><td>1</td><td>0, 2</td><td>(1,0), (1,2)</td><td>2</td></tr>
+  <tr><td>(1, 1)</td><td>1</td><td>1, 3</td><td>(1,1), (1,3)</td><td>2</td></tr>
+</table>
+
+<p>
+Total: 4 + 4 + 2 + 2 = <strong>12 tiles</strong>. Every tile is covered exactly once. Notice how block (0, 1) and block (1, 1) only do 2 tiles each — because there are only 3 row-tiles, the inner loop stops after one iteration for <code>blockIdx.y == 1</code>. This asymmetry doesn't hurt correctness; it just means those two blocks finish a bit earlier.
+</p>
+
+<h3>5.2 Visualizing the Assignment</h3>
+
+<div class="diagram">
+  <svg width="720" height="360" viewBox="0 0 720 360">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">How 4 Blocks Stride Across 12 Output Tiles</text>
+
+    <!-- 3x4 tile grid at the output-tile level, not the cell level -->
+    <!-- Each tile is a 100×60 rectangle -->
+    <g text-anchor="middle" font-family="Courier New">
+      <!-- Headers -->
+      <text x="95"  y="55" font-size="10" fill="#666">tileX=0</text>
+      <text x="205" y="55" font-size="10" fill="#666">tileX=1</text>
+      <text x="315" y="55" font-size="10" fill="#666">tileX=2</text>
+      <text x="425" y="55" font-size="10" fill="#666">tileX=3</text>
+
+      <text x="40" y="95"  font-size="10" fill="#666">tileY=0</text>
+      <text x="40" y="175" font-size="10" fill="#666">tileY=1</text>
+      <text x="40" y="255" font-size="10" fill="#666">tileY=2</text>
+
+      <!-- Tile (0,0) → block (0,0) -->
+      <rect x="70"  y="65"  width="100" height="60" fill="#a5d6a7" stroke="#2e7d32" stroke-width="2"/>
+      <text x="120" y="92"  font-size="10" font-weight="bold">tile(0,0)</text>
+      <text x="120" y="110" font-size="9" fill="#2e7d32">Block(0,0) · pass 1</text>
+
+      <!-- Tile (0,1) → block (1,0) -->
+      <rect x="180" y="65"  width="100" height="60" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+      <text x="230" y="92"  font-size="10" font-weight="bold">tile(0,1)</text>
+      <text x="230" y="110" font-size="9" fill="#1565c0">Block(1,0) · pass 1</text>
+
+      <!-- Tile (0,2) → block (0,0) -->
+      <rect x="290" y="65"  width="100" height="60" fill="#a5d6a7" stroke="#2e7d32" stroke-width="2"/>
+      <text x="340" y="92"  font-size="10" font-weight="bold">tile(0,2)</text>
+      <text x="340" y="110" font-size="9" fill="#2e7d32">Block(0,0) · pass 2</text>
+
+      <!-- Tile (0,3) → block (1,0), partial -->
+      <rect x="400" y="65"  width="100" height="60" fill="#90caf9" stroke="#1565c0" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="450" y="92"  font-size="10" font-weight="bold">tile(0,3) ½</text>
+      <text x="450" y="110" font-size="9" fill="#1565c0">Block(1,0) · pass 2</text>
+
+      <!-- Tile (1,0) → block (0,1) -->
+      <rect x="70"  y="145" width="100" height="60" fill="#ffcc80" stroke="#e65100" stroke-width="2"/>
+      <text x="120" y="172" font-size="10" font-weight="bold">tile(1,0)</text>
+      <text x="120" y="190" font-size="9" fill="#e65100">Block(0,1) · pass 1</text>
+
+      <!-- Tile (1,1) → block (1,1) -->
+      <rect x="180" y="145" width="100" height="60" fill="#ce93d8" stroke="#7b1fa2" stroke-width="2"/>
+      <text x="230" y="172" font-size="10" font-weight="bold">tile(1,1)</text>
+      <text x="230" y="190" font-size="9" fill="#7b1fa2">Block(1,1) · pass 1</text>
+
+      <!-- Tile (1,2) → block (0,1) -->
+      <rect x="290" y="145" width="100" height="60" fill="#ffcc80" stroke="#e65100" stroke-width="2"/>
+      <text x="340" y="172" font-size="10" font-weight="bold">tile(1,2)</text>
+      <text x="340" y="190" font-size="9" fill="#e65100">Block(0,1) · pass 2</text>
+
+      <!-- Tile (1,3) → block (1,1), partial -->
+      <rect x="400" y="145" width="100" height="60" fill="#ce93d8" stroke="#7b1fa2" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="450" y="172" font-size="10" font-weight="bold">tile(1,3) ½</text>
+      <text x="450" y="190" font-size="9" fill="#7b1fa2">Block(1,1) · pass 2</text>
+
+      <!-- Tile (2,0) → block (0,0), partial (row) -->
+      <rect x="70"  y="225" width="100" height="60" fill="#a5d6a7" stroke="#2e7d32" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="120" y="252" font-size="10" font-weight="bold">tile(2,0) ½</text>
+      <text x="120" y="270" font-size="9" fill="#2e7d32">Block(0,0) · pass 3</text>
+
+      <!-- Tile (2,1) → block (1,0), partial (row) -->
+      <rect x="180" y="225" width="100" height="60" fill="#90caf9" stroke="#1565c0" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="230" y="252" font-size="10" font-weight="bold">tile(2,1) ½</text>
+      <text x="230" y="270" font-size="9" fill="#1565c0">Block(1,0) · pass 3</text>
+
+      <!-- Tile (2,2) → block (0,0), partial (row) -->
+      <rect x="290" y="225" width="100" height="60" fill="#a5d6a7" stroke="#2e7d32" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="340" y="252" font-size="10" font-weight="bold">tile(2,2) ½</text>
+      <text x="340" y="270" font-size="9" fill="#2e7d32">Block(0,0) · pass 4</text>
+
+      <!-- Tile (2,3) → block (1,0), partial (row+col) ★ our trace target -->
+      <rect x="400" y="225" width="100" height="60" fill="#90caf9" stroke="#1565c0" stroke-width="3" stroke-dasharray="6,3"/>
+      <rect x="400" y="225" width="100" height="60" fill="none" stroke="#c62828" stroke-width="3"/>
+      <text x="450" y="252" font-size="10" font-weight="bold" fill="#c62828">tile(2,3) ¼ ★</text>
+      <text x="450" y="270" font-size="9" fill="#1565c0">Block(1,0) · pass 4</text>
+    </g>
+
+    <!-- Legend / explanation -->
+    <g transform="translate(540, 70)">
+      <rect x="0" y="0" width="160" height="200" fill="#fafafa" stroke="#ccc" stroke-width="1" rx="4"/>
+      <text x="80" y="18" text-anchor="middle" font-size="11" font-weight="bold" fill="#333">Grid-Stride Reading</text>
+      <text x="10" y="40"  font-size="9" fill="#333">· Each color = one block</text>
+      <text x="10" y="58"  font-size="9" fill="#333">· "pass N" = Nth tile this</text>
+      <text x="10" y="70"  font-size="9" fill="#333">&nbsp;&nbsp; block processes</text>
+      <text x="10" y="88"  font-size="9" fill="#333">· Dashed border =</text>
+      <text x="10" y="100" font-size="9" fill="#333">&nbsp;&nbsp; partial tile (edge)</text>
+      <text x="10" y="118" font-size="9" fill="#333">· ½ = half the cells pad</text>
+      <text x="10" y="130" font-size="9" fill="#333">· ¼ = only one real cell</text>
+      <text x="10" y="155" font-size="9" fill="#c62828" font-weight="bold">★ tile(2,3): the corner</text>
+      <text x="10" y="167" font-size="9" fill="#c62828">&nbsp;&nbsp; we will hand-trace</text>
+      <text x="10" y="179" font-size="9" fill="#c62828">&nbsp;&nbsp; next. Only C[4,6] is</text>
+      <text x="10" y="191" font-size="9" fill="#c62828">&nbsp;&nbsp; a real output; the</text>
+    </g>
+
+    <!-- Stride arrows for block (0,0) -->
+    <defs>
+      <marker id="arr_green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#2e7d32"/>
+      </marker>
+    </defs>
+    <path d="M 170 95 Q 230 50 290 95"   stroke="#2e7d32" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#arr_green)"/>
+    <path d="M 120 125 Q 95  175 120 225" stroke="#2e7d32" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#arr_green)"/>
+    <path d="M 170 255 Q 230 210 290 255" stroke="#2e7d32" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#arr_green)"/>
+    <text x="230" y="40" font-size="8" fill="#2e7d32" font-weight="bold">block(0,0) stride path</text>
+
+    <text x="360" y="325" text-anchor="middle" font-size="10" fill="#555" font-style="italic">Block (0,0) walks: tile(0,0) → tile(0,2) [stride x=2] → tile(2,0) [stride y=2] → tile(2,2).</text>
+    <text x="360" y="340" text-anchor="middle" font-size="10" fill="#555" font-style="italic">The green dashed arrows trace its four hops. Other blocks walk analogously.</text>
+  </svg>
+  <div class="diagram-caption">Figure 5.1 — The 4 launched blocks tile-stride across the 12 output tiles. Each color marks a block; "pass N" shows the order in which that block processes its tiles. The red-outlined tile (2, 3) in the corner — processed by Block (1, 0) on its 4th pass — is the hardest one, with only the single cell C[4, 6] inside the real matrix.</div>
+</div>
+
+<!-- ================================================================== -->
+<div class="page-break"></div>
+<h2>6. The INNER Loop: Shared-Memory Tiling at a Boundary</h2>
+
+<p>
+Now we zoom in all the way: inside the 4th pass of Block (1, 0), computing the corner output tile (2, 3). The four threads of this block cooperate for two phases, with padding on both the row and column sides, to produce the single valid output <em>C</em>[4, 6] = 190.
+</p>
+
+<h3>6.1 Setting Up Tile (2, 3) — The Corner Case</h3>
+
+<p>
+For this tile:
+</p>
+<ul>
+  <li><strong>outRow = tileY × TILE = 2 × 2 = 4.</strong> Thread (ty, tx) handles output row = outRow + ty, i.e. row 4 or row 5.</li>
+  <li><strong>outCol = tileX × TILE = 3 × 2 = 6.</strong> Thread (ty, tx) handles output col = outCol + tx, i.e. col 6 or col 7.</li>
+  <li><strong>Only Thread (0, 0) targets a real output cell</strong> (C[4, 6]). The other three threads will do all the work but discard their result.</li>
+</ul>
+
+<p>
+This is a crucial feature of the pattern: every thread still participates in the cooperative load and compute. They can't just early-exit, because the shared tile needs to be fully populated — every thread's slot in <code>As</code> and <code>Bs</code> contributes to the dot products of <em>other</em> valid threads. The elegant trick is to <strong>load zero</strong> for out-of-bounds elements. Zero kills the multiply, so the padding contributes nothing to the sums.
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">Three Guards, Three Different Jobs</div>
+  <ol>
+    <li><strong>Guard on the A load</strong> — "is this A-element actually inside A?" If no, store 0 in shared.</li>
+    <li><strong>Guard on the B load</strong> — "is this B-element actually inside B?" If no, store 0 in shared.</li>
+    <li><strong>Guard on the C write</strong> — "is this output actually inside C?" If no, skip the store.</li>
+  </ol>
+  <p>All three are independent. The A guard protects reads, the B guard protects reads, and the C guard protects writes. You need all three.</p>
+</div>
+
+<h3>6.2 Phase 0: Load (with padding) and Partial Multiply</h3>
+
+<p>
+Phase 0 covers K-dimension indices 0 and 1. Each thread (ty, tx) loads one element of A and one of B:
+</p>
+
+<ul>
+  <li>A-load address: <code>A[(outRow + ty), (0 + tx)] = A[4+ty, 0+tx]</code></li>
+  <li>B-load address: <code>B[(0 + ty), (outCol + tx)] = B[0+ty, 6+tx]</code></li>
+</ul>
+
+<div class="diagram">
+  <svg width="720" height="420" viewBox="0 0 720 420">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Phase 0 — Load (with Zero-Padding) and Compute at Tile (2, 3)</text>
+
+    <!-- A region: show global A rows 4-5, cols 0-1 (half inside, half pad for row 5) -->
+    <text x="100" y="52" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565c0">A (what each thread loads)</text>
+    <g font-size="10" text-anchor="middle" font-family="Courier New">
+      <text x="40" y="78" font-size="8" fill="#666">row</text>
+      <text x="70" y="66" font-size="8" fill="#666">k=0</text>
+      <text x="120" y="66" font-size="8" fill="#666">k=1</text>
+
+      <text x="40" y="100" font-size="8" fill="#666">4</text>
+      <rect x="50" y="85" width="40" height="28" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+      <text x="70" y="103">17</text>
+      <rect x="100" y="85" width="40" height="28" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+      <text x="120" y="103">18</text>
+
+      <text x="40" y="135" font-size="8" fill="#999">(5)</text>
+      <rect x="50" y="118" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-width="2" stroke-dasharray="4,2"/>
+      <text x="70" y="137" fill="#c62828" font-weight="bold">0</text>
+      <text x="70" y="146" font-size="6" fill="#c62828">(pad)</text>
+      <rect x="100" y="118" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-width="2" stroke-dasharray="4,2"/>
+      <text x="120" y="137" fill="#c62828" font-weight="bold">0</text>
+      <text x="120" y="146" font-size="6" fill="#c62828">(pad)</text>
+    </g>
+    <text x="100" y="170" text-anchor="middle" font-size="9" fill="#555" font-style="italic">row 5 is off the end of A — pad</text>
+
+    <!-- B region: rows 0-1, cols 6-7 -->
+    <text x="310" y="52" text-anchor="middle" font-size="11" font-weight="bold" fill="#c62828">B (what each thread loads)</text>
+    <g font-size="10" text-anchor="middle" font-family="Courier New">
+      <text x="250" y="78" font-size="8" fill="#666">row</text>
+      <text x="280" y="66" font-size="8" fill="#666">c=6</text>
+      <text x="330" y="66" font-size="8" fill="#666">c=7</text>
+
+      <text x="250" y="100" font-size="8" fill="#666">k=0</text>
+      <rect x="260" y="85" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="280" y="103">1</text>
+      <rect x="310" y="85" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-width="2" stroke-dasharray="4,2"/>
+      <text x="330" y="103" fill="#c62828" font-weight="bold">0</text>
+      <text x="330" y="112" font-size="6" fill="#c62828">(pad)</text>
+
+      <text x="250" y="135" font-size="8" fill="#666">k=1</text>
+      <rect x="260" y="118" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="280" y="137">2</text>
+      <rect x="310" y="118" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-width="2" stroke-dasharray="4,2"/>
+      <text x="330" y="137" fill="#c62828" font-weight="bold">0</text>
+      <text x="330" y="146" font-size="6" fill="#c62828">(pad)</text>
+    </g>
+    <text x="310" y="170" text-anchor="middle" font-size="9" fill="#555" font-style="italic">col 7 is off the end of B — pad</text>
+
+    <!-- Shared As, Bs after load -->
+    <text x="530" y="52" text-anchor="middle" font-size="11" font-weight="bold" fill="#0066cc">Shared As[2][2]  /  Bs[2][2]</text>
+
+    <g font-size="10" text-anchor="middle" font-family="Courier New">
+      <text x="480" y="70" font-size="9" fill="#1565c0" font-weight="bold">As</text>
+      <rect x="455" y="75" width="40" height="28" fill="#bbdefb" stroke="#1565c0"/><text x="475" y="93">17</text>
+      <rect x="495" y="75" width="40" height="28" fill="#bbdefb" stroke="#1565c0"/><text x="515" y="93">18</text>
+      <rect x="455" y="103" width="40" height="28" fill="#ffecec" stroke="#1565c0"/><text x="475" y="121" fill="#c62828">0</text>
+      <rect x="495" y="103" width="40" height="28" fill="#ffecec" stroke="#1565c0"/><text x="515" y="121" fill="#c62828">0</text>
+
+      <text x="620" y="70" font-size="9" fill="#c62828" font-weight="bold">Bs</text>
+      <rect x="595" y="75" width="40" height="28" fill="#ef9a9a" stroke="#c62828"/><text x="615" y="93">1</text>
+      <rect x="635" y="75" width="40" height="28" fill="#ffecec" stroke="#c62828"/><text x="655" y="93" fill="#c62828">0</text>
+      <rect x="595" y="103" width="40" height="28" fill="#ef9a9a" stroke="#c62828"/><text x="615" y="121">2</text>
+      <rect x="635" y="103" width="40" height="28" fill="#ffecec" stroke="#c62828"/><text x="655" y="121" fill="#c62828">0</text>
+    </g>
+    <text x="530" y="150" text-anchor="middle" font-size="9" fill="#555" font-style="italic">Half of As is zero (row-5 padding); half of Bs is zero (col-7 padding).</text>
+
+    <!-- Load arrows -->
+    <defs>
+      <marker id="arr_blue" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+        <polygon points="0 0, 10 4, 0 8" fill="#2e7d32"/>
+      </marker>
+    </defs>
+    <path d="M 150 100 Q 300 60 455 90"  stroke="#2e7d32" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#arr_blue)"/>
+    <path d="M 360 100 Q 480 80 595 90"  stroke="#2e7d32" stroke-width="1.5" fill="none" stroke-dasharray="4,2" marker-end="url(#arr_blue)"/>
+
+    <!-- Barrier -->
+    <rect x="30" y="185" width="660" height="24" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="4"/>
+    <text x="360" y="202" text-anchor="middle" font-size="12" font-weight="bold" fill="#b37700">__syncthreads()  —  shared memory is fully populated</text>
+
+    <!-- Compute table for phase 0 -->
+    <text x="30" y="230" font-size="11" font-weight="bold" fill="#333">Each thread computes  sum += As[ty][0]·Bs[0][tx] + As[ty][1]·Bs[1][tx]:</text>
+
+    <g transform="translate(30, 240)">
+      <rect x="0" y="0" width="660" height="20" fill="#e0e8f0"/>
+      <text x="55"  y="14" text-anchor="middle" font-size="9" font-weight="bold">Thread (ty,tx)</text>
+      <text x="160" y="14" text-anchor="middle" font-size="9" font-weight="bold">target output cell</text>
+      <text x="330" y="14" text-anchor="middle" font-size="9" font-weight="bold">dot-product inside shared</text>
+      <text x="530" y="14" text-anchor="middle" font-size="9" font-weight="bold">partial sum after phase 0</text>
+
+      <!-- (0,0) -->
+      <rect x="0" y="20" width="660" height="22" fill="#e8f5e9"/>
+      <text x="55"  y="36" text-anchor="middle" font-size="10" font-family="Courier New">(0, 0)</text>
+      <text x="160" y="36" text-anchor="middle" font-size="10" font-family="Courier New" fill="#2e7d32" font-weight="bold">C[4, 6] (valid)</text>
+      <text x="330" y="36" text-anchor="middle" font-size="10" font-family="Courier New">17·1 + 18·2 = 17 + 36</text>
+      <text x="530" y="36" text-anchor="middle" font-size="10" font-family="Courier New" font-weight="bold" fill="#2e7d32">sum = 53</text>
+
+      <!-- (0,1) -->
+      <rect x="0" y="42" width="660" height="22" fill="#ffebee"/>
+      <text x="55"  y="58" text-anchor="middle" font-size="10" font-family="Courier New">(0, 1)</text>
+      <text x="160" y="58" text-anchor="middle" font-size="10" font-family="Courier New" fill="#c62828">C[4, 7] (col OOB)</text>
+      <text x="330" y="58" text-anchor="middle" font-size="10" font-family="Courier New">17·0 + 18·0 = 0</text>
+      <text x="530" y="58" text-anchor="middle" font-size="10" font-family="Courier New" font-weight="bold" fill="#c62828">sum = 0 (will be discarded)</text>
+
+      <!-- (1,0) -->
+      <rect x="0" y="64" width="660" height="22" fill="#ffebee"/>
+      <text x="55"  y="80" text-anchor="middle" font-size="10" font-family="Courier New">(1, 0)</text>
+      <text x="160" y="80" text-anchor="middle" font-size="10" font-family="Courier New" fill="#c62828">C[5, 6] (row OOB)</text>
+      <text x="330" y="80" text-anchor="middle" font-size="10" font-family="Courier New">0·1 + 0·2 = 0</text>
+      <text x="530" y="80" text-anchor="middle" font-size="10" font-family="Courier New" font-weight="bold" fill="#c62828">sum = 0 (will be discarded)</text>
+
+      <!-- (1,1) -->
+      <rect x="0" y="86" width="660" height="22" fill="#ffebee"/>
+      <text x="55"  y="102" text-anchor="middle" font-size="10" font-family="Courier New">(1, 1)</text>
+      <text x="160" y="102" text-anchor="middle" font-size="10" font-family="Courier New" fill="#c62828">C[5, 7] (both OOB)</text>
+      <text x="330" y="102" text-anchor="middle" font-size="10" font-family="Courier New">0·0 + 0·0 = 0</text>
+      <text x="530" y="102" text-anchor="middle" font-size="10" font-family="Courier New" font-weight="bold" fill="#c62828">sum = 0 (will be discarded)</text>
+
+      <rect x="0" y="0" width="660" height="108" fill="none" stroke="#999" stroke-width="1" rx="3"/>
+    </g>
+
+    <!-- End-of-phase barrier -->
+    <rect x="30" y="365" width="660" height="24" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="4"/>
+    <text x="360" y="382" text-anchor="middle" font-size="12" font-weight="bold" fill="#b37700">__syncthreads()  —  safe to overwrite shared memory with the next tile</text>
+  </svg>
+  <div class="diagram-caption">Figure 6.1 — Phase 0 of block (1, 0)'s 4th pass. The row-5 slots of A and the col-7 slots of B both get padded with zero. Only thread (0, 0) is doing arithmetic that matters; the other three carry zeros through the multiply-add but will be filtered out by the final write-back guard.</div>
+</div>
+
+<h3>6.3 Phase 1: Load Again and Accumulate</h3>
+
+<p>
+Phase 1 covers K-dimension indices 2 and 3. The shared arrays <code>As</code> and <code>Bs</code> are overwritten with new data:
+</p>
+
+<ul>
+  <li>A-load: <code>A[4+ty, 2+tx]</code> — row 4 is valid, row 5 pads to zero.</li>
+  <li>B-load: <code>B[2+ty, 6+tx]</code> — col 6 is valid, col 7 pads to zero.</li>
+</ul>
+
+<div class="diagram">
+  <svg width="720" height="420" viewBox="0 0 720 420">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Phase 1 — New Load, New Zeros, Accumulate</text>
+
+    <!-- A : rows 4-5, cols 2-3 -->
+    <text x="100" y="52" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565c0">A (phase 1)</text>
+    <g font-size="10" text-anchor="middle" font-family="Courier New">
+      <text x="40" y="78" font-size="8" fill="#666">row</text>
+      <text x="70" y="66" font-size="8" fill="#666">k=2</text>
+      <text x="120" y="66" font-size="8" fill="#666">k=3</text>
+
+      <text x="40" y="100" font-size="8" fill="#666">4</text>
+      <rect x="50" y="85" width="40" height="28" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/><text x="70" y="103">19</text>
+      <rect x="100" y="85" width="40" height="28" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/><text x="120" y="103">20</text>
+
+      <text x="40" y="135" font-size="8" fill="#999">(5)</text>
+      <rect x="50" y="118" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-width="2" stroke-dasharray="4,2"/><text x="70" y="137" fill="#c62828" font-weight="bold">0</text>
+      <rect x="100" y="118" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-width="2" stroke-dasharray="4,2"/><text x="120" y="137" fill="#c62828" font-weight="bold">0</text>
+    </g>
+
+    <!-- B : rows 2-3, cols 6-7 -->
+    <text x="310" y="52" text-anchor="middle" font-size="11" font-weight="bold" fill="#c62828">B (phase 1)</text>
+    <g font-size="10" text-anchor="middle" font-family="Courier New">
+      <text x="250" y="78" font-size="8" fill="#666">row</text>
+      <text x="280" y="66" font-size="8" fill="#666">c=6</text>
+      <text x="330" y="66" font-size="8" fill="#666">c=7</text>
+
+      <text x="250" y="100" font-size="8" fill="#666">k=2</text>
+      <rect x="260" y="85" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/><text x="280" y="103">3</text>
+      <rect x="310" y="85" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-width="2" stroke-dasharray="4,2"/><text x="330" y="103" fill="#c62828" font-weight="bold">0</text>
+
+      <text x="250" y="135" font-size="8" fill="#666">k=3</text>
+      <rect x="260" y="118" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/><text x="280" y="137">4</text>
+      <rect x="310" y="118" width="40" height="28" fill="#f5f5f5" stroke="#999" stroke-width="2" stroke-dasharray="4,2"/><text x="330" y="137" fill="#c62828" font-weight="bold">0</text>
+    </g>
+
+    <!-- Shared As, Bs after phase-1 load -->
+    <text x="530" y="52" text-anchor="middle" font-size="11" font-weight="bold" fill="#0066cc">Shared (overwritten)</text>
+    <g font-size="10" text-anchor="middle" font-family="Courier New">
+      <text x="480" y="70" font-size="9" fill="#1565c0" font-weight="bold">As</text>
+      <rect x="455" y="75" width="40" height="28" fill="#bbdefb" stroke="#1565c0"/><text x="475" y="93">19</text>
+      <rect x="495" y="75" width="40" height="28" fill="#bbdefb" stroke="#1565c0"/><text x="515" y="93">20</text>
+      <rect x="455" y="103" width="40" height="28" fill="#ffecec" stroke="#1565c0"/><text x="475" y="121" fill="#c62828">0</text>
+      <rect x="495" y="103" width="40" height="28" fill="#ffecec" stroke="#1565c0"/><text x="515" y="121" fill="#c62828">0</text>
+
+      <text x="620" y="70" font-size="9" fill="#c62828" font-weight="bold">Bs</text>
+      <rect x="595" y="75" width="40" height="28" fill="#ef9a9a" stroke="#c62828"/><text x="615" y="93">3</text>
+      <rect x="635" y="75" width="40" height="28" fill="#ffecec" stroke="#c62828"/><text x="655" y="93" fill="#c62828">0</text>
+      <rect x="595" y="103" width="40" height="28" fill="#ef9a9a" stroke="#c62828"/><text x="615" y="121">4</text>
+      <rect x="635" y="103" width="40" height="28" fill="#ffecec" stroke="#c62828"/><text x="655" y="121" fill="#c62828">0</text>
+    </g>
+
+    <!-- Barrier -->
+    <rect x="30" y="160" width="660" height="24" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="4"/>
+    <text x="360" y="177" text-anchor="middle" font-size="12" font-weight="bold" fill="#b37700">__syncthreads()</text>
+
+    <!-- Compute -->
+    <text x="30" y="205" font-size="11" font-weight="bold" fill="#333">Accumulate (sum += phase-1 contribution to the running sum from phase 0):</text>
+
+    <g transform="translate(30, 215)">
+      <rect x="0" y="0" width="660" height="20" fill="#e0e8f0"/>
+      <text x="55"  y="14" text-anchor="middle" font-size="9" font-weight="bold">Thread (ty,tx)</text>
+      <text x="160" y="14" text-anchor="middle" font-size="9" font-weight="bold">target output cell</text>
+      <text x="320" y="14" text-anchor="middle" font-size="9" font-weight="bold">phase-1 contribution</text>
+      <text x="530" y="14" text-anchor="middle" font-size="9" font-weight="bold">running sum after phase 1</text>
+
+      <rect x="0" y="20" width="660" height="22" fill="#e8f5e9"/>
+      <text x="55"  y="36" text-anchor="middle" font-size="10" font-family="Courier New">(0, 0)</text>
+      <text x="160" y="36" text-anchor="middle" font-size="10" font-family="Courier New" fill="#2e7d32" font-weight="bold">C[4, 6] (valid)</text>
+      <text x="320" y="36" text-anchor="middle" font-size="10" font-family="Courier New">19·3 + 20·4 = 57 + 80 = 137</text>
+      <text x="530" y="36" text-anchor="middle" font-size="10" font-family="Courier New" font-weight="bold" fill="#2e7d32">53 + 137 = 190 ✓</text>
+
+      <rect x="0" y="42" width="660" height="22" fill="#ffebee"/>
+      <text x="55"  y="58" text-anchor="middle" font-size="10" font-family="Courier New">(0, 1)</text>
+      <text x="160" y="58" text-anchor="middle" font-size="10" font-family="Courier New" fill="#c62828">C[4, 7]</text>
+      <text x="320" y="58" text-anchor="middle" font-size="10" font-family="Courier New">19·0 + 20·0 = 0</text>
+      <text x="530" y="58" text-anchor="middle" font-size="10" font-family="Courier New" font-weight="bold" fill="#c62828">0 (discarded)</text>
+
+      <rect x="0" y="64" width="660" height="22" fill="#ffebee"/>
+      <text x="55"  y="80" text-anchor="middle" font-size="10" font-family="Courier New">(1, 0)</text>
+      <text x="160" y="80" text-anchor="middle" font-size="10" font-family="Courier New" fill="#c62828">C[5, 6]</text>
+      <text x="320" y="80" text-anchor="middle" font-size="10" font-family="Courier New">0·3 + 0·4 = 0</text>
+      <text x="530" y="80" text-anchor="middle" font-size="10" font-family="Courier New" font-weight="bold" fill="#c62828">0 (discarded)</text>
+
+      <rect x="0" y="86" width="660" height="22" fill="#ffebee"/>
+      <text x="55"  y="102" text-anchor="middle" font-size="10" font-family="Courier New">(1, 1)</text>
+      <text x="160" y="102" text-anchor="middle" font-size="10" font-family="Courier New" fill="#c62828">C[5, 7]</text>
+      <text x="320" y="102" text-anchor="middle" font-size="10" font-family="Courier New">0·0 + 0·0 = 0</text>
+      <text x="530" y="102" text-anchor="middle" font-size="10" font-family="Courier New" font-weight="bold" fill="#c62828">0 (discarded)</text>
+
+      <rect x="0" y="0" width="660" height="108" fill="none" stroke="#999" stroke-width="1" rx="3"/>
+    </g>
+
+    <!-- Final barrier (end-of-phase, last iteration — technically could be skipped, but convention) -->
+    <rect x="30" y="340" width="660" height="24" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="4"/>
+    <text x="360" y="357" text-anchor="middle" font-size="12" font-weight="bold" fill="#b37700">__syncthreads()  —  no more phases; ready for write-back</text>
+
+    <!-- Write-back -->
+    <rect x="30" y="375" width="660" height="38" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2" rx="4"/>
+    <text x="45" y="395" font-size="11" font-weight="bold" fill="#2e7d32">Guarded write: if (row &lt; 5 && col &lt; 7) C[row * 7 + col] = sum;</text>
+    <text x="45" y="408" font-size="10" fill="#333">Only Thread (0,0) satisfies both bounds → C[4, 6] = 190 ✓ &nbsp;&nbsp; The other three threads skip the store.</text>
+  </svg>
+  <div class="diagram-caption">Figure 6.2 — Phase 1 completes Thread (0, 0)'s dot product: 53 (phase 0) + 137 (phase 1) = <strong>190</strong>, matching the expected answer. The three OOB threads produced zero, which the write-back guard then discards.</div>
+</div>
+
+<h3>6.4 Write-Back with Bounds Check</h3>
+
+<p>
+After the last phase, every thread has a <code>sum</code> variable. Only threads whose global <code>(row, col)</code> falls inside the real output matrix C are allowed to write:
+</p>
+
+<pre>
+if (row &lt; M && col &lt; N) {
+    C[row * N + col] = sum;
+}
+</pre>
+
+<p>
+For tile (2, 3): <code>M = 5</code>, <code>N = 7</code>. The four threads and their decisions:
+</p>
+
+<table>
+  <tr><th>Thread (ty, tx)</th><th>row = 4 + ty</th><th>col = 6 + tx</th><th>row &lt; 5?</th><th>col &lt; 7?</th><th>Action</th></tr>
+  <tr><td>(0, 0)</td><td>4</td><td>6</td><td>yes</td><td>yes</td><td style="background:#c8e6c8"><strong>Write C[4, 6] = 190</strong></td></tr>
+  <tr><td>(0, 1)</td><td>4</td><td>7</td><td>yes</td><td>no</td><td style="background:#ffcdd2">Skip</td></tr>
+  <tr><td>(1, 0)</td><td>5</td><td>6</td><td>no</td><td>yes</td><td style="background:#ffcdd2">Skip</td></tr>
+  <tr><td>(1, 1)</td><td>5</td><td>7</td><td>no</td><td>no</td><td style="background:#ffcdd2">Skip</td></tr>
+</table>
+
+<div class="note-box">
+  <div class="note-box-title">Why Three Threads Did "Useless" Work</div>
+  It may feel wasteful that threads (0,1), (1,0), and (1,1) carried zeros through the entire computation only to throw everything away. But those threads were essential: each of them loaded <em>one slot</em> of shared memory. Without them, thread (0, 0) would have been staring at uninitialized values at As[1][*] and Bs[*][1], which the inner <code>for k</code> loop reads unconditionally. The cost of the "wasted" threads is the price of keeping the cooperative load pattern simple and barrier-friendly.
+</div>
+
+<!-- ================================================================== -->
+<div class="page-break"></div>
+<h2>7. The Complete Kernel</h2>
+
+<p>
+Here, in one place, is the full kernel we just hand-traced. Nothing hidden:
+</p>
+
+<pre>
+#define TILE 2
+
+__global__ void matMulTiledStrided(
+        const float* __restrict__ A,
+        const float* __restrict__ B,
+        float* __restrict__ C,
+        int M, int N, int K)
+{
+    __shared__ float As[TILE][TILE];
+    __shared__ float Bs[TILE][TILE];
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    int rowTiles = (M + TILE - 1) / TILE;   // ceil(M / TILE)
+    int colTiles = (N + TILE - 1) / TILE;   // ceil(N / TILE)
+    int numPhases = (K + TILE - 1) / TILE;  // ceil(K / TILE)
+
+    // ===== OUTER: block-level grid-stride over the output tile grid =====
+    for (int tileY = blockIdx.y; tileY &lt; rowTiles; tileY += gridDim.y) {
+      for (int tileX = blockIdx.x; tileX &lt; colTiles; tileX += gridDim.x) {
+
+        int row = tileY * TILE + ty;        // this thread's output row
+        int col = tileX * TILE + tx;        // this thread's output col
+        float sum = 0.0f;
+
+        // ===== INNER: cooperative shared-memory tiling over K =====
+        for (int phase = 0; phase &lt; numPhases; ++phase) {
+            int aCol = phase * TILE + tx;
+            int bRow = phase * TILE + ty;
+
+            // Guarded cooperative load (pad with zero when out of bounds)
+            As[ty][tx] = (row &lt; M && aCol &lt; K) ? A[row * K + aCol] : 0.0f;
+            Bs[ty][tx] = (bRow &lt; K && col &lt; N) ? B[bRow * N + col] : 0.0f;
+
+            __syncthreads();                 // tile is fully loaded
+
+            // Multiply-add along the K-dimension inside the tile
+            #pragma unroll
+            for (int k = 0; k &lt; TILE; ++k) {
+                sum += As[ty][k] * Bs[k][tx];
+            }
+
+            __syncthreads();                 // safe to overwrite next phase
+        }
+
+        // Guarded write-back — only real output cells get stored
+        if (row &lt; M && col &lt; N) {
+            C[row * N + col] = sum;
+        }
+      }
+    }
+}
+
+// --- Host-side launch ---
+dim3 threads(TILE, TILE);                    // 2 × 2 = 4 threads per block
+dim3 blocks(2, 2);                           // 4 blocks total (toy example)
+matMulTiledStrided&lt;&lt;&lt;blocks, threads&gt;&gt;&gt;(dA, dB, dC, /*M=*/5, /*N=*/7, /*K=*/4);
+</pre>
+
+<p>
+Three nested loops total: two outer grid-stride loops over the output-tile grid, one inner phase loop over K. Three bounds-guards: one on each of the two loads, one on the write. Two <code>__syncthreads()</code> inside the phase loop.
+</p>
+
+<!-- ================================================================== -->
+<h2>8. End-to-End Trace Tables</h2>
+
+<p>
+Let us verify the kernel on two representative tiles — a clean interior tile (every thread valid) and the corner tile we've been dissecting (only one thread valid).
+</p>
+
+<h3>8.1 A Clean Interior Tile — Tile (0, 0)</h3>
+
+<p>
+Processed by Block (0, 0) on its first pass. <code>outRow = 0</code>, <code>outCol = 0</code>. All four threads produce real output: C[0,0], C[0,1], C[1,0], C[1,1], all expected to equal 30 / 30 / 70 / 70.
+</p>
+
+<table class="trace-table">
+  <tr><th>Thread</th><th>target</th><th>Phase 0: As, Bs</th><th>Phase 0 sum</th><th>Phase 1: As, Bs</th><th>Phase 1 contribution</th><th>Final</th><th>✓</th></tr>
+  <tr>
+    <td>(0,0)</td><td>C[0,0]</td>
+    <td>A{1,2} · B{1 from col0, 2 from col0}</td>
+    <td>1·1 + 2·2 = 5</td>
+    <td>A{3,4} · B{3,4}</td>
+    <td>3·3 + 4·4 = 25</td>
+    <td style="background:#c8e6c8"><strong>30</strong></td><td>✓</td>
+  </tr>
+  <tr>
+    <td>(0,1)</td><td>C[0,1]</td>
+    <td>A{1,2} · B{1 from col1, 2 from col1}</td>
+    <td>1·1 + 2·2 = 5</td>
+    <td>A{3,4} · B{3,4}</td>
+    <td>3·3 + 4·4 = 25</td>
+    <td style="background:#c8e6c8"><strong>30</strong></td><td>✓</td>
+  </tr>
+  <tr>
+    <td>(1,0)</td><td>C[1,0]</td>
+    <td>A{5,6} · B{1,2}</td>
+    <td>5·1 + 6·2 = 17</td>
+    <td>A{7,8} · B{3,4}</td>
+    <td>7·3 + 8·4 = 53</td>
+    <td style="background:#c8e6c8"><strong>70</strong></td><td>✓</td>
+  </tr>
+  <tr>
+    <td>(1,1)</td><td>C[1,1]</td>
+    <td>A{5,6} · B{1,2}</td>
+    <td>5·1 + 6·2 = 17</td>
+    <td>A{7,8} · B{3,4}</td>
+    <td>7·3 + 8·4 = 53</td>
+    <td style="background:#c8e6c8"><strong>70</strong></td><td>✓</td>
+  </tr>
+</table>
+
+<h3>8.2 The Hardest Tile — Tile (2, 3)</h3>
+
+<p>
+Processed by Block (1, 0) on its 4th pass. <code>outRow = 4</code>, <code>outCol = 6</code>. Only C[4, 6] is a real output.
+</p>
+
+<table class="trace-table">
+  <tr><th>Thread</th><th>target</th><th>Phase 0: As, Bs</th><th>Phase 0 sum</th><th>Phase 1: As, Bs</th><th>Phase 1 contribution</th><th>Final</th><th>Write?</th></tr>
+  <tr>
+    <td>(0,0)</td><td>C[4,6]</td>
+    <td>A{17,18} · B{1,2}</td>
+    <td>17·1 + 18·2 = 53</td>
+    <td>A{19,20} · B{3,4}</td>
+    <td>19·3 + 20·4 = 137</td>
+    <td style="background:#a5d6a7"><strong>190</strong></td>
+    <td style="background:#c8e6c8">yes ✓</td>
+  </tr>
+  <tr>
+    <td>(0,1)</td><td>C[4,7] OOB</td>
+    <td>A{17,18} · B{0,0} (pad)</td>
+    <td>17·0 + 18·0 = 0</td>
+    <td>A{19,20} · B{0,0}</td>
+    <td>19·0 + 20·0 = 0</td>
+    <td>0</td>
+    <td style="background:#ffcdd2">no</td>
+  </tr>
+  <tr>
+    <td>(1,0)</td><td>C[5,6] OOB</td>
+    <td>A{0,0} (pad) · B{1,2}</td>
+    <td>0·1 + 0·2 = 0</td>
+    <td>A{0,0} · B{3,4}</td>
+    <td>0</td>
+    <td>0</td>
+    <td style="background:#ffcdd2">no</td>
+  </tr>
+  <tr>
+    <td>(1,1)</td><td>C[5,7] OOB</td>
+    <td>A{0,0} · B{0,0}</td>
+    <td>0</td>
+    <td>A{0,0} · B{0,0}</td>
+    <td>0</td>
+    <td>0</td>
+    <td style="background:#ffcdd2">no</td>
+  </tr>
+</table>
+
+<p>
+Interior tile: 4 valid writes, no padding needed. Corner tile: 1 valid write, 3 skipped. Both correct. ✓
+</p>
+
+<!-- ================================================================== -->
+<h2>9. Summary — Two Axes, One Kernel</h2>
+
+<div class="diagram">
+  <svg width="720" height="330" viewBox="0 0 720 330">
+    <text x="360" y="22" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">The Two Axes of a Real CUDA Kernel</text>
+
+    <!-- Horizontal axis = GRID-STRIDE (block-level) -->
+    <rect x="30" y="55" width="660" height="110" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2" rx="8"/>
+    <text x="50" y="80" font-size="13" font-weight="bold" fill="#2e7d32">Axis 1 — Block-level grid-stride (outer)</text>
+    <text x="50" y="100" font-size="10" fill="#333">· Decouples launch size from data size.</text>
+    <text x="50" y="117" font-size="10" fill="#333">· Each block takes multiple output tiles in sequence: <tspan font-family="Courier New">tileY += gridDim.y</tspan>, <tspan font-family="Courier New">tileX += gridDim.x</tspan>.</text>
+    <text x="50" y="134" font-size="10" fill="#333">· Enables launching the "sweet spot" number of blocks (~120 on GT200) regardless of matrix size.</text>
+    <text x="50" y="151" font-size="10" fill="#333" font-weight="bold">Solves:</text>
+    <text x="115" y="151" font-size="10" fill="#333">"too many output tiles for the chip to hold at once" (scheduling / coverage).</text>
+
+    <!-- Tiling box -->
+    <rect x="30" y="180" width="660" height="110" fill="#e3f2fd" stroke="#1565c0" stroke-width="2" rx="8"/>
+    <text x="50" y="205" font-size="13" font-weight="bold" fill="#1565c0">Axis 2 — Shared-memory tiling (inner)</text>
+    <text x="50" y="225" font-size="10" fill="#333">· Cuts global memory traffic by reusing each loaded byte TILE times.</text>
+    <text x="50" y="242" font-size="10" fill="#333">· Each block cooperatively loads two T×T tiles per phase, barrier, computes, barrier, next phase.</text>
+    <text x="50" y="259" font-size="10" fill="#333">· Zero-padding at the edges handles non-multiple dimensions without a separate boundary kernel.</text>
+    <text x="50" y="276" font-size="10" fill="#333" font-weight="bold">Solves:</text>
+    <text x="115" y="276" font-size="10" fill="#333">"redundant global memory reads make the kernel memory-bound" (bandwidth / speed).</text>
+
+    <text x="360" y="315" text-anchor="middle" font-size="11" fill="#333" font-style="italic">The outer axis makes the kernel <strong>scale</strong>. The inner axis makes it <strong>fast</strong>. Both are needed for a real production kernel.</text>
+  </svg>
+  <div class="diagram-caption">Figure 9.1 — The combined pattern decomposes into two independent axes. The block-level grid-stride loop is "where do I go next after finishing this tile?"; the shared-memory tiling is "how do I compute this one tile efficiently?". Each solves a different problem; together they are complete.</div>
+</div>
+
+<div class="key-concept">
+  <div class="key-concept-title">The One Thing to Walk Away With</div>
+  <p>A production matmul kernel has <strong>three loops in the kernel body and three bounds guards</strong>:</p>
+  <ul>
+    <li><em>Outer two loops</em> = grid-stride at the block level → every output tile gets owned by exactly one block.</li>
+    <li><em>Inner loop</em> = tiling phases over the K dimension → each phase loads one shared-memory tile and does TILE multiply-adds.</li>
+    <li><em>Three guards</em> = one on each shared-memory load (pad with zero), one on the final C store (discard writes to padding).</li>
+  </ul>
+  <p>Once you can write that from memory on an index card, you can scale it from 5×7 on GT200 all the way up to 4096×4096 on an H100 without changing a single structural line — only the tile size, the number of blocks, and perhaps the data type.</p>
+</div>
+
+<p>
+If you can look at the trace of C[4, 6] = 190 and see <em>why</em> every zero got where it got, you understand the combined pattern. That same mental movie plays out identically for every tile in a 65,536-tile matmul on modern hardware; the only difference is scale.
+</p>
+
+<hr style="margin-top: 50px; border: none; border-top: 2px solid #333;"/>
+<p style="text-align: center; font-style: italic; color: #666; margin-top: 20px;">
+End of Appendix — A Worked Example on GT200
+</p>
+
+
+<div id="ai-disclaimer-banner" style="margin:60px auto 40px;padding-top:20px;border-top:1px solid #ddd;max-width:880px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10.5pt;color:#555;line-height:1.6">
+  <strong style="color:#333">About this page.</strong>
+  The prose here was <em>written by AI</em> (Claude). The questions, the learning path, and the decisions about what to include are mine &mdash; I wanted to learn CUDA properly and used AI to help me turn my scratch notes into readable chapters. Please cross-reference with authoritative sources (<a href="https://docs.nvidia.com/cuda/" style="color:#0066cc">NVIDIA CUDA Programming Guide</a>, the <em>Programming Massively Parallel Processors</em> textbook, etc.) before relying on anything here for production work.
+  &nbsp;&middot;&nbsp; <a href="index.html" style="color:#0066cc">&larr; CUDA chapter index</a>
+</div>
+</body>
+</html>

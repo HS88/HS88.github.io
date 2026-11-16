@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter: Tiled Shared-Memory Kernels in CUDA — A Complete Guide</title>
+<style>
+  @page {
+    size: A4;
+    margin: 2.5cm 2cm;
+  }
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.7;
+    color: #1a1a1a;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 30px;
+    background: #fff;
+  }
+
+  /* Chapter header */
+  .chapter-number {
+    font-size: 14pt;
+    color: #666;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    border-top: 3px solid #333;
+    padding-top: 20px;
+  }
+  h1 {
+    font-size: 28pt;
+    margin-top: 5px;
+    margin-bottom: 30px;
+    color: #111;
+    border-bottom: 1px solid #999;
+    padding-bottom: 15px;
+  }
+
+  /* Section headers */
+  h2 {
+    font-size: 18pt;
+    margin-top: 40px;
+    margin-bottom: 15px;
+    color: #222;
+    border-left: 4px solid #0066cc;
+    padding-left: 12px;
+  }
+  h3 {
+    font-size: 14pt;
+    margin-top: 30px;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  h4 {
+    font-size: 12pt;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: #444;
+    font-style: italic;
+  }
+
+  /* Paragraphs */
+  p {
+    text-align: justify;
+    margin-bottom: 12px;
+  }
+
+  /* Code blocks */
+  pre {
+    background: #f5f5f0;
+    border: 1px solid #ddd;
+    border-left: 4px solid #0066cc;
+    padding: 15px 20px;
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: 3px;
+  }
+  code {
+    font-family: 'Courier New', monospace;
+    font-size: 10pt;
+    background: #f0f0eb;
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+
+  /* Diagrams */
+  .diagram {
+    margin: 25px auto;
+    padding: 20px;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+  .diagram-caption {
+    font-style: italic;
+    font-size: 10pt;
+    color: #555;
+    margin-top: 8px;
+    text-align: center;
+  }
+  .diagram svg {
+    max-width: 100%;
+  }
+
+  /* Key concept boxes */
+  .key-concept {
+    background: #e8f4f8;
+    border: 2px solid #0066cc;
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin: 25px 0;
+    page-break-inside: avoid;
+  }
+  .key-concept-title {
+    font-weight: bold;
+    color: #0066cc;
+    font-size: 11pt;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Warning/note boxes */
+  .note-box {
+    background: #fff8e1;
+    border: 1px solid #f0c040;
+    border-left: 4px solid #f0a000;
+    border-radius: 3px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    page-break-inside: avoid;
+  }
+  .note-box-title {
+    font-weight: bold;
+    color: #b37700;
+    margin-bottom: 5px;
+  }
+
+  /* Tables */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+    font-size: 10.5pt;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    text-align: center;
+  }
+  th {
+    background: #e0e8f0;
+    font-weight: bold;
+    color: #333;
+  }
+  tr:nth-child(even) {
+    background: #f8f8f5;
+  }
+
+  /* Ordered/unordered lists */
+  ol, ul {
+    margin-bottom: 15px;
+    padding-left: 30px;
+  }
+  li {
+    margin-bottom: 6px;
+  }
+
+  /* Epigraph */
+  .epigraph {
+    font-style: italic;
+    color: #555;
+    border-left: 3px solid #aaa;
+    padding-left: 15px;
+    margin: 30px 40px;
+    font-size: 11pt;
+    line-height: 1.6;
+  }
+  .epigraph-author {
+    text-align: right;
+    font-size: 10pt;
+    color: #777;
+  }
+
+  /* Page break helper */
+  .page-break {
+    page-break-before: always;
+  }
+
+  /* Analogy box */
+  .analogy {
+    background: #f0fff0;
+    border: 1px solid #7cb97c;
+    border-left: 4px solid #2e8b2e;
+    border-radius: 3px;
+    padding: 15px 20px;
+    margin: 20px 0;
+    page-break-inside: avoid;
+  }
+  .analogy-title {
+    font-weight: bold;
+    color: #2e8b2e;
+    margin-bottom: 5px;
+  }
+
+  /* Step trace table */
+  .trace-table td {
+    font-family: 'Courier New', monospace;
+    font-size: 9.5pt;
+  }
+
+  .toc {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    padding: 20px 30px;
+    margin: 30px 0;
+    border-radius: 5px;
+  }
+  .toc h3 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+  }
+  .toc ol {
+    list-style: none;
+    counter-reset: toc;
+    padding-left: 0;
+  }
+  .toc > ol > li {
+    counter-increment: toc;
+    margin-bottom: 4px;
+  }
+  .toc > ol > li::before {
+    content: counter(toc) ". ";
+    font-weight: bold;
+    color: #0066cc;
+  }
+  .toc a {
+    text-decoration: none;
+    color: #333;
+  }
+  .toc a:hover {
+    color: #0066cc;
+  }
+  .toc ol ol {
+    padding-left: 25px;
+    margin-top: 4px;
+    list-style: none;
+    counter-reset: subtoc;
+  }
+  .toc ol ol li {
+    counter-increment: subtoc;
+    font-size: 11pt;
+    margin-bottom: 2px;
+  }
+
+  .highlight-row {
+    background: #ffffcc !important;
+    font-weight: bold;
+  }
+
+  .math {
+    font-family: 'Times New Roman', serif;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<h1>Tiled Shared-Memory Kernels in CUDA</h1>
+
+<div class="epigraph">
+  "Fast, cheap, reliable — pick two. On a GPU, if you pick fast and cheap, you must stop walking to the warehouse and bring the parts to your workbench."
+  <div class="epigraph-author">— GPU folklore</div>
+</div>
+
+<div class="toc">
+  <h3>Contents of This Chapter</h3>
+  <ol>
+    <li>The Problem: Global Memory Is a Bottleneck</li>
+    <li>Prerequisites — The GPU Memory Hierarchy
+      <ol>
+        <li>The Four Levels</li>
+        <li>Shared Memory: The Programmer's Cache</li>
+        <li>Threads Talking: <code>__syncthreads()</code></li>
+      </ol>
+    </li>
+    <li>The Naïve Approach and Its Hidden Cost
+      <ol>
+        <li>Matrix Multiplication, the Simple Way</li>
+        <li>Counting Global Memory Reads</li>
+      </ol>
+    </li>
+    <li>The Tiling Idea — Load Once, Reuse Many Times
+      <ol>
+        <li>The "Bring the Books to Your Desk" Analogy</li>
+        <li>What Is a Tile?</li>
+      </ol>
+    </li>
+    <li>Tiled Matrix Multiplication — The Walkthrough
+      <ol>
+        <li>Setup: 4×4 Matrices with 2×2 Tiles</li>
+        <li>Phase 0: Load and Partial Multiply</li>
+        <li>Phase 1: Load Again and Accumulate</li>
+        <li>Why Two <code>__syncthreads()</code> Calls</li>
+      </ol>
+    </li>
+    <li>The Code Pattern
+      <ol>
+        <li>The Kernel</li>
+        <li>Host-Side Launch</li>
+        <li>Line-by-Line Dissection</li>
+      </ol>
+    </li>
+    <li>The Math — Why Tiling Wins
+      <ol>
+        <li>Global Reads: Naïve vs Tiled</li>
+        <li>Arithmetic Intensity</li>
+      </ol>
+    </li>
+    <li>Handling Boundaries (When Dimensions Are Not Multiples of the Tile)</li>
+    <li>Common Pitfalls and Debugging Tips</li>
+    <li>Beyond Matrix Multiplication — Other Tiled Kernels</li>
+    <li>Summary and The One Rule</li>
+  </ol>
+</div>
+
+<!-- ================================================================== -->
+<h2>1. The Problem: Global Memory Is a Bottleneck</h2>
+
+<p>
+In the previous chapter we solved the problem of <em>mapping threads to data</em>: no matter how large the dataset, a grid-stride loop lets a fixed number of threads cover everything. But solving that problem only guarantees <em>correctness</em>; it says nothing about <em>speed</em>. Once every element is reached, a new, more subtle question appears:
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">Central Question</div>
+  A modern GPU can perform roughly ten trillion floating-point operations per second, but its global memory can only deliver one or two trillion bytes per second. If each arithmetic operation requires its own trip to global memory, the GPU will spend the vast majority of its time <em>waiting</em>. How can we make every fetched byte do more work before it is thrown away?
+</div>
+
+<p>
+This is the <strong>memory-bandwidth bottleneck</strong>, and it is the single most important performance issue in GPU programming. The answer, in a word, is <strong>tiling</strong>: we partition the data into small blocks that fit into a tiny but extremely fast on-chip memory, we load each block exactly once, and we let many threads reuse it before we move on.
+</p>
+
+<p>
+By the end of this chapter, you will understand the tiling pattern well enough to apply it to matrix multiplication, convolutions, stencil computations, and any other kernel where the same data is touched more than once.
+</p>
+
+<!-- ================================================================== -->
+<h2>2. Prerequisites — The GPU Memory Hierarchy</h2>
+
+<p>
+Before we can talk about tiling, we need to see the landscape of memories that live on a GPU. Each kind of memory has a different size, a different latency, and a different scope of visibility.
+</p>
+
+<h3>2.1 The Four Levels</h3>
+
+<p>
+A CUDA-capable GPU has essentially four layers of memory that a programmer should know about:
+</p>
+
+<ol>
+  <li><strong>Registers</strong> — One cycle of latency. Private to a single thread. A few hundred 32-bit registers per thread.</li>
+  <li><strong>Shared memory</strong> (also called L1 scratchpad) — Roughly 20–30 cycles. Shared by all threads within a block. Typically 48 KB to 164 KB per Streaming Multiprocessor (SM).</li>
+  <li><strong>L2 cache</strong> — A few hundred cycles. Shared across all SMs on the chip. A few megabytes in total.</li>
+  <li><strong>Global memory</strong> (the device DRAM) — <strong>400 to 800 cycles</strong>. Visible to every thread of every kernel. Several gigabytes, but very far away.</li>
+</ol>
+
+<div class="diagram">
+  <svg width="720" height="340" viewBox="0 0 720 340">
+    <text x="360" y="22" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">The GPU Memory Hierarchy</text>
+
+    <!-- Pyramid, widest at bottom = largest/slowest -->
+    <!-- Global memory -->
+    <polygon points="60,290 660,290 600,240 120,240" fill="#ffcdd2" stroke="#c62828" stroke-width="2"/>
+    <text x="360" y="272" text-anchor="middle" font-size="13" font-weight="bold" fill="#b71c1c">Global Memory (DRAM)</text>
+    <text x="360" y="286" text-anchor="middle" font-size="9" fill="#555">several GB &nbsp;·&nbsp; ~400–800 cycles &nbsp;·&nbsp; visible to all threads</text>
+
+    <!-- L2 cache -->
+    <polygon points="120,240 600,240 540,190 180,190" fill="#ffe0b2" stroke="#e65100" stroke-width="2"/>
+    <text x="360" y="220" text-anchor="middle" font-size="12" font-weight="bold" fill="#bf360c">L2 Cache</text>
+    <text x="360" y="234" text-anchor="middle" font-size="9" fill="#555">few MB &nbsp;·&nbsp; ~200 cycles &nbsp;·&nbsp; shared across all SMs</text>
+
+    <!-- Shared memory / L1 -->
+    <polygon points="180,190 540,190 480,140 240,140" fill="#c8e6c8" stroke="#2e7d32" stroke-width="2"/>
+    <text x="360" y="170" text-anchor="middle" font-size="12" font-weight="bold" fill="#1b5e20">Shared Memory  /  L1</text>
+    <text x="360" y="184" text-anchor="middle" font-size="9" fill="#555">48–164 KB per SM &nbsp;·&nbsp; ~20–30 cycles &nbsp;·&nbsp; shared by one block</text>
+
+    <!-- Registers -->
+    <polygon points="240,140 480,140 420,90 300,90" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+    <text x="360" y="120" text-anchor="middle" font-size="12" font-weight="bold" fill="#0d47a1">Registers</text>
+    <text x="360" y="134" text-anchor="middle" font-size="9" fill="#555">~64 KB per SM, split per thread &nbsp;·&nbsp; 1 cycle &nbsp;·&nbsp; private</text>
+
+    <!-- Apex -->
+    <polygon points="300,90 420,90 360,55" fill="#fff" stroke="#999" stroke-width="1" stroke-dasharray="3,3"/>
+    <text x="360" y="78" text-anchor="middle" font-size="9" fill="#999">faster &amp; smaller</text>
+
+    <!-- Right side: speed vs capacity gradient arrows -->
+    <defs>
+      <marker id="arr_down" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+        <polygon points="0 0, 10 4, 0 8" fill="#555"/>
+      </marker>
+    </defs>
+    <line x1="685" y1="70" x2="685" y2="300" stroke="#555" stroke-width="1.5" marker-end="url(#arr_down)"/>
+    <text x="700" y="100" font-size="10" fill="#555" transform="rotate(90 700 100)">larger · slower · farther</text>
+
+    <!-- Left side: annotation -->
+    <text x="35" y="290" font-size="9" fill="#555" text-anchor="middle" transform="rotate(-90 35 290)">latency ↑</text>
+  </svg>
+  <div class="diagram-caption">Figure 2.1 — A rough picture of the GPU memory hierarchy. Each level trades size for speed. Global memory is roughly <em>twenty to forty times slower</em> than shared memory.</div>
+</div>
+
+<div class="note-box">
+  <div class="note-box-title">The 20× Speed Gap</div>
+  Put the numbers in your head: a single global-memory load can take as long as <strong>twenty to forty shared-memory loads</strong>. That ratio is the engine that makes tiling worth the trouble. If we can reuse each global load even 10 times out of shared memory, we have effectively made the kernel 10× faster.
+</div>
+
+<h3>2.2 Shared Memory: The Programmer's Cache</h3>
+
+<p>
+Unlike a CPU cache — which is managed automatically by hardware — <strong>shared memory is managed by you, the programmer</strong>. You decide what to load into it, when, and how it is laid out. You are, in effect, writing your own tiny cache-management routine. That sounds like a burden, but it is actually a gift: it means you can design a loading pattern that is <em>perfect</em> for your specific algorithm.
+</p>
+
+<p>
+In CUDA, shared memory is declared inside a kernel with the <code>__shared__</code> qualifier:
+</p>
+
+<pre>
+__global__ void myKernel(float* A) {
+    __shared__ float tile[16][16];   // 16 × 16 × 4 B = 1024 B of shared memory
+    // ... each block has its own private copy of `tile` ...
+}
+</pre>
+
+<p>
+Every <em>block</em> that is launched receives its own private copy of the shared array. Threads inside the same block see the same shared memory; threads in different blocks do not.
+</p>
+
+<h3>2.3 Threads Talking: <code>__syncthreads()</code></h3>
+
+<p>
+Because threads inside a block run <em>semi-independently</em> (they are scheduled in groups of 32 called <em>warps</em>, but different warps make progress at different rates), we need a way to say: "Everybody wait here until all of us have arrived." That is the job of the barrier function <code>__syncthreads()</code>.
+</p>
+
+<div class="analogy">
+  <div class="analogy-title">Analogy: The Group Hike</div>
+  <p>
+  Imagine a team of hikers walking a trail together. Occasionally the trail reaches a river. Some hikers arrive first; some lag behind. Before anyone wades in, the group pauses at the bank until <em>every member</em> has arrived. Only then does the group cross as one.
+  </p>
+  <p>
+  In a CUDA block, <code>__syncthreads()</code> is that pause at the river. Every thread in the block must reach the barrier before <em>any</em> thread may continue.
+  </p>
+</div>
+
+<p>
+Tiling always uses this pattern:
+</p>
+<ol>
+  <li>All threads cooperatively load a tile from global memory into shared memory.</li>
+  <li><code>__syncthreads()</code> — wait until the tile is fully loaded.</li>
+  <li>All threads compute using the tile.</li>
+  <li><code>__syncthreads()</code> — wait until the computation is done before overwriting the tile with the next one.</li>
+</ol>
+
+<!-- ================================================================== -->
+<h2>3. The Naïve Approach and Its Hidden Cost</h2>
+
+<p>
+To feel the pain that tiling cures, let us look at a kernel that works but wastes memory bandwidth catastrophically. The classical example is matrix multiplication.
+</p>
+
+<h3>3.1 Matrix Multiplication, the Simple Way</h3>
+
+<p>
+To multiply two <em>N × N</em> matrices, <em>C = A × B</em>, each output element <em>C[row][col]</em> is the dot product of one row of <em>A</em> and one column of <em>B</em>:
+</p>
+
+<pre>
+C[row][col] = Σ<sub>k=0..N-1</sub>  A[row][k] * B[k][col]
+</pre>
+
+<p>
+The obvious CUDA kernel assigns one output element to each thread:
+</p>
+
+<pre>
+__global__ void matMulNaive(const float* A, const float* B, float* C, int N) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < N && col < N) {
+        float sum = 0.0f;
+        for (int k = 0; k < N; k++) {
+            sum += A[row * N + k] * B[k * N + col];   // two global loads per k
+        }
+        C[row * N + col] = sum;
+    }
+}
+</pre>
+
+<h3>3.2 Counting Global Memory Reads</h3>
+
+<p>
+This kernel is <em>correct</em>, but let us count how many bytes it reads from global memory.
+</p>
+
+<ul>
+  <li>Each thread performs <em>N</em> iterations of its inner loop.</li>
+  <li>Each iteration reads one element of <em>A</em> and one element of <em>B</em> — that is <strong>2N global loads per output element</strong>.</li>
+  <li>There are <em>N²</em> output elements, so total global loads = <strong>2N³</strong>.</li>
+</ul>
+
+<p>
+Now compare that to the <em>minimum possible</em>: there are only 2N² unique input elements (A and B together). The naïve kernel therefore re-reads each input element from global memory roughly <em>N</em> times.
+</p>
+
+<div class="diagram">
+  <svg width="720" height="420" viewBox="0 0 720 420">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Why the Naïve Kernel Wastes Bandwidth: Redundant Reads</text>
+
+    <!-- ========================================================= -->
+    <!-- Row 1: The equation  A  ×  B  =  C                        -->
+    <!-- A: x=50–170   ×: x=195   B: x=220–340   =: x=365   C: x=390–510 -->
+    <!-- Each cell is 30 wide × 24 tall; 4×4 matrix = 120 × 96     -->
+    <!-- ========================================================= -->
+
+    <!-- Matrix A header -->
+    <text x="110" y="55" text-anchor="middle" font-size="12" font-weight="bold" fill="#1565c0">Matrix A (4×4)</text>
+
+    <!-- Matrix A — row 0 highlighted (blue), rest dimmed -->
+    <g font-size="9" text-anchor="middle">
+      <!-- Row 0 (highlighted) -->
+      <rect x="50"  y="65" width="30" height="24" fill="#90caf9" stroke="#1565c0"/>
+      <text x="65"  y="81" fill="#0d47a1">A00</text>
+      <rect x="80"  y="65" width="30" height="24" fill="#90caf9" stroke="#1565c0"/>
+      <text x="95"  y="81" fill="#0d47a1">A01</text>
+      <rect x="110" y="65" width="30" height="24" fill="#90caf9" stroke="#1565c0"/>
+      <text x="125" y="81" fill="#0d47a1">A02</text>
+      <rect x="140" y="65" width="30" height="24" fill="#90caf9" stroke="#1565c0"/>
+      <text x="155" y="81" fill="#0d47a1">A03</text>
+
+      <!-- Rows 1–3 (dimmed) -->
+      <rect x="50"  y="89"  width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="80"  y="89"  width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="110" y="89"  width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="140" y="89"  width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+
+      <rect x="50"  y="113" width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="80"  y="113" width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="110" y="113" width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="140" y="113" width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+
+      <rect x="50"  y="137" width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="80"  y="137" width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="110" y="137" width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="140" y="137" width="30" height="24" fill="#e3f2fd" stroke="#1565c0"/>
+    </g>
+    <text x="110" y="180" text-anchor="middle" font-size="9" fill="#1565c0" font-style="italic">row 0 of A (used by every cell in row 0 of C)</text>
+
+    <!-- × sign -->
+    <text x="195" y="117" text-anchor="middle" font-size="24" font-weight="bold" fill="#333">×</text>
+
+    <!-- Matrix B header -->
+    <text x="280" y="55" text-anchor="middle" font-size="12" font-weight="bold" fill="#c62828">Matrix B (4×4)</text>
+
+    <!-- Matrix B — col 1 highlighted (red), rest dimmed -->
+    <g font-size="9" text-anchor="middle">
+      <!-- Row 0 -->
+      <rect x="220" y="65" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+      <rect x="250" y="65" width="30" height="24" fill="#ef9a9a" stroke="#c62828"/>
+      <text x="265" y="81" fill="#b71c1c">B01</text>
+      <rect x="280" y="65" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+      <rect x="310" y="65" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+
+      <!-- Row 1 -->
+      <rect x="220" y="89" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+      <rect x="250" y="89" width="30" height="24" fill="#ef9a9a" stroke="#c62828"/>
+      <text x="265" y="105" fill="#b71c1c">B11</text>
+      <rect x="280" y="89" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+      <rect x="310" y="89" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+
+      <!-- Row 2 -->
+      <rect x="220" y="113" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+      <rect x="250" y="113" width="30" height="24" fill="#ef9a9a" stroke="#c62828"/>
+      <text x="265" y="129" fill="#b71c1c">B21</text>
+      <rect x="280" y="113" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+      <rect x="310" y="113" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+
+      <!-- Row 3 -->
+      <rect x="220" y="137" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+      <rect x="250" y="137" width="30" height="24" fill="#ef9a9a" stroke="#c62828"/>
+      <text x="265" y="153" fill="#b71c1c">B31</text>
+      <rect x="280" y="137" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+      <rect x="310" y="137" width="30" height="24" fill="#ffebee" stroke="#c62828"/>
+    </g>
+    <text x="280" y="180" text-anchor="middle" font-size="9" fill="#c62828" font-style="italic">col 1 of B (used by every cell in col 1 of C)</text>
+
+    <!-- = sign -->
+    <text x="365" y="117" text-anchor="middle" font-size="24" font-weight="bold" fill="#333">=</text>
+
+    <!-- Matrix C header -->
+    <text x="450" y="55" text-anchor="middle" font-size="12" font-weight="bold" fill="#2e7d32">Matrix C (4×4)</text>
+
+    <!-- Matrix C — row 0 lightly blue (needs A-row-0), col 1 lightly red (needs B-col-1), -->
+    <!-- C[0,1] dark green (where the two highlighted stripes cross) -->
+    <g font-size="9" text-anchor="middle">
+      <!-- Row 0 -->
+      <rect x="390" y="65" width="30" height="24" fill="#bbdefb" stroke="#2e7d32"/>
+      <text x="405" y="81">C00</text>
+      <rect x="420" y="65" width="30" height="24" fill="#66bb6a" stroke="#2e7d32"/>
+      <text x="435" y="81" fill="#fff" font-weight="bold">C01</text>
+      <rect x="450" y="65" width="30" height="24" fill="#bbdefb" stroke="#2e7d32"/>
+      <text x="465" y="81">C02</text>
+      <rect x="480" y="65" width="30" height="24" fill="#bbdefb" stroke="#2e7d32"/>
+      <text x="495" y="81">C03</text>
+
+      <!-- Row 1 — only col 1 is red-tinted -->
+      <rect x="390" y="89" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+      <rect x="420" y="89" width="30" height="24" fill="#ef9a9a" stroke="#2e7d32"/>
+      <rect x="450" y="89" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+      <rect x="480" y="89" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+
+      <!-- Row 2 -->
+      <rect x="390" y="113" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+      <rect x="420" y="113" width="30" height="24" fill="#ef9a9a" stroke="#2e7d32"/>
+      <rect x="450" y="113" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+      <rect x="480" y="113" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+
+      <!-- Row 3 -->
+      <rect x="390" y="137" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+      <rect x="420" y="137" width="30" height="24" fill="#ef9a9a" stroke="#2e7d32"/>
+      <rect x="450" y="137" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+      <rect x="480" y="137" width="30" height="24" fill="#f5f5f5" stroke="#2e7d32"/>
+    </g>
+    <text x="450" y="180" text-anchor="middle" font-size="9" fill="#2e7d32" font-style="italic">C[0,1] = Σ A[0,k]·B[k,1]  — the green cell</text>
+
+    <!-- Legend strip -->
+    <g transform="translate(540, 70)">
+      <rect x="0" y="0" width="140" height="100" fill="#fafafa" stroke="#ccc" stroke-width="1" rx="4"/>
+      <text x="70" y="15" text-anchor="middle" font-size="9" font-weight="bold" fill="#333">Legend</text>
+      <rect x="10" y="22" width="14" height="10" fill="#90caf9" stroke="#1565c0"/>
+      <text x="30" y="31" font-size="8" fill="#333">hot row of A</text>
+      <rect x="10" y="38" width="14" height="10" fill="#ef9a9a" stroke="#c62828"/>
+      <text x="30" y="47" font-size="8" fill="#333">hot col of B</text>
+      <rect x="10" y="54" width="14" height="10" fill="#bbdefb" stroke="#2e7d32"/>
+      <text x="30" y="63" font-size="8" fill="#333">C cells using A-row-0</text>
+      <rect x="10" y="70" width="14" height="10" fill="#ef9a9a" stroke="#2e7d32"/>
+      <text x="30" y="79" font-size="8" fill="#333">C cells using B-col-1</text>
+      <rect x="10" y="86" width="14" height="10" fill="#66bb6a" stroke="#2e7d32"/>
+      <text x="30" y="95" font-size="8" fill="#333">uses both (overlap)</text>
+    </g>
+
+    <!-- ========================================================= -->
+    <!-- Row 2: The explanation box with counting                   -->
+    <!-- ========================================================= -->
+    <rect x="30" y="210" width="660" height="195" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="6"/>
+    <text x="360" y="234" text-anchor="middle" font-size="13" font-weight="bold" fill="#b37700">The Redundancy</text>
+
+    <text x="50" y="261" font-size="10.5" fill="#333">• All four threads computing <tspan font-weight="bold" fill="#1565c0">row 0 of C</tspan> (C00, C01, C02, C03) each read the entire <tspan font-weight="bold" fill="#1565c0">row 0 of A</tspan>.</text>
+    <text x="65" y="279" font-size="10.5" fill="#333">→ A[0, ·] is fetched from global memory <tspan font-weight="bold">4 times</tspan> — once per output column.</text>
+
+    <text x="50" y="306" font-size="10.5" fill="#333">• All four threads computing <tspan font-weight="bold" fill="#c62828">col 1 of C</tspan> (C01, C11, C21, C31) each read the entire <tspan font-weight="bold" fill="#c62828">col 1 of B</tspan>.</text>
+    <text x="65" y="324" font-size="10.5" fill="#333">→ B[·, 1] is fetched from global memory <tspan font-weight="bold">4 times</tspan> — once per output row.</text>
+
+    <line x1="50" y1="345" x2="670" y2="345" stroke="#b37700" stroke-width="1" stroke-dasharray="4,3"/>
+
+    <text x="50" y="370" font-size="11" fill="#333"><tspan font-weight="bold" fill="#c62828">Total global reads:</tspan> &nbsp; 2 · N³ &nbsp;=&nbsp; 2 · 4³ &nbsp;=&nbsp; <tspan font-weight="bold" fill="#c62828">128 loads</tspan></text>
+    <text x="50" y="390" font-size="11" fill="#333"><tspan font-weight="bold">Unique data:</tspan> &nbsp; only 2 · N² = 32 elements — each input is re-read ≈ <tspan font-weight="bold">N = 4 times</tspan>.</text>
+  </svg>
+  <div class="diagram-caption">Figure 3.1 — In the naïve kernel, each row of A is re-fetched by every output column, and each column of B is re-fetched by every output row. The green cell C[0,1] lies at the crossing of the two highlighted stripes. For <em>N × N</em> matrices, the redundancy factor is <em>N</em>.</div>
+</div>
+
+<p>
+For <em>N</em> = 1024, that means <strong>2 billion global loads</strong> instead of the ideal 2 million. A thousand-fold increase in memory traffic — most of it duplicated. This is the hidden cost, and tiling is going to make it go away.
+</p>
+
+<!-- ================================================================== -->
+<h2>4. The Tiling Idea — Load Once, Reuse Many Times</h2>
+
+<p>
+The heart of tiling is a single, simple observation: whenever multiple threads need the same piece of data, that data should be fetched from global memory <em>once</em>, parked in shared memory, and reused by all the threads that need it.
+</p>
+
+<h3>4.1 The "Bring the Books to Your Desk" Analogy</h3>
+
+<div class="analogy">
+  <div class="analogy-title">Analogy: Group Study at the Library</div>
+  <p>
+  You and three classmates have to answer 16 questions. Every question requires looking up a fact in a reference book that lives in the library across campus. The naïve approach: each person, for each of their four questions, walks to the library, reads one line, and walks back. Four people × four questions × one trip = <strong>16 trips to the library</strong>.
+  </p>
+  <p>
+  A smarter approach: the four of you meet at a shared study table. One person goes to the library and <em>borrows the book</em>, bringing it to the table. Now all four of you can read any fact from the book without leaving. You answer all 16 questions from the single book on the table. Total trips: <strong>one</strong>.
+  </p>
+  <p>
+  The library is global memory. The shared study table is shared memory. The book is a <em>tile</em>. The borrowing phase is the cooperative load. And the "wait until everyone sits down before starting" moment is <code>__syncthreads()</code>.
+  </p>
+</div>
+
+<h3>4.2 What Is a Tile?</h3>
+
+<p>
+A <strong>tile</strong> is a small, rectangular sub-block of the input data — small enough to fit into shared memory, large enough that many threads can reuse it. In matrix multiplication we usually pick a square tile, for example 16 × 16 floats = 1,024 bytes, and we size our thread block to exactly match: 16 × 16 = 256 threads. Each thread of the block is responsible for loading <em>one element</em> of the tile.
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">The Tile Contract</div>
+  <p>Inside a block of <em>T × T</em> threads, we agree on three rules:</p>
+  <ol>
+    <li>Each thread loads <strong>exactly one</strong> element of the tile from global memory into shared memory.</li>
+    <li>We <code>__syncthreads()</code>, then everyone is free to read <strong>any</strong> element of the tile.</li>
+    <li>After the computation, we <code>__syncthreads()</code> again before reusing the shared buffer.</li>
+  </ol>
+  <p>Because of rule 2, each element — loaded once from the slow DRAM — is read <em>T</em> times from the fast on-chip memory. We have amplified every global load by a factor of <em>T</em>.</p>
+</div>
+
+<!-- ================================================================== -->
+<div class="page-break"></div>
+<h2>5. Tiled Matrix Multiplication — The Walkthrough</h2>
+
+<p>
+Now we are ready to apply tiling to matrix multiplication. We will trace a tiny example by hand so that every memory movement is visible.
+</p>
+
+<h3>5.1 Setup: 4×4 Matrices with 2×2 Tiles</h3>
+
+<p>
+To keep the drawings small, we will multiply two 4 × 4 matrices with a tile size of 2. The grid is 2 × 2 blocks, and each block has 2 × 2 = 4 threads. Each block will compute one 2 × 2 tile of the output <em>C</em>.
+</p>
+
+<ul>
+  <li><strong>Matrix size:</strong> <em>N</em> = 4</li>
+  <li><strong>Tile size:</strong> <em>T</em> = 2</li>
+  <li><strong>Grid:</strong> 2 × 2 blocks</li>
+  <li><strong>Block:</strong> 2 × 2 threads → 4 threads per block</li>
+  <li><strong>Phases per block:</strong> <em>N</em>/<em>T</em> = 2 (we have to slide the tile across the matrix twice to accumulate the full dot product)</li>
+</ul>
+
+<div class="diagram">
+  <svg width="720" height="330" viewBox="0 0 720 330">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Decomposition: One Block Computes One Output Tile</text>
+
+    <!-- A matrix with vertical tile strip highlighted -->
+    <text x="110" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565c0">A (4×4)</text>
+    <g>
+      <!-- Phase 0 tile: cols 0-1, rows 0-1 (which is what block (0,0) needs) -->
+      <rect x="60" y="65" width="40" height="40" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+      <text x="80" y="90" text-anchor="middle" font-size="9" font-weight="bold">A tile (phase 0)</text>
+      <rect x="100" y="65" width="40" height="40" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+      <text x="120" y="90" text-anchor="middle" font-size="9" font-weight="bold">A tile (phase 1)</text>
+      <!-- lower rows -->
+      <rect x="60" y="105" width="80" height="80" fill="#f5f5f5" stroke="#999" stroke-width="1"/>
+      <text x="100" y="150" text-anchor="middle" font-size="8" fill="#999">(other row-tiles,</text>
+      <text x="100" y="162" text-anchor="middle" font-size="8" fill="#999">processed by block (0,1))</text>
+    </g>
+    <!-- labels -->
+    <text x="100" y="210" text-anchor="middle" font-size="9" fill="#555">Block (0,0) walks these 2 tiles →</text>
+
+    <!-- B matrix with horizontal tile strip highlighted -->
+    <text x="310" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#c62828">B (4×4)</text>
+    <g>
+      <!-- Phase 0 tile: rows 0-1, cols 0-1 -->
+      <rect x="260" y="65" width="40" height="40" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="280" y="90" text-anchor="middle" font-size="9" font-weight="bold">B tile (phase 0)</text>
+      <!-- other cols -->
+      <rect x="300" y="65" width="80" height="40" fill="#f5f5f5" stroke="#999" stroke-width="1"/>
+      <text x="340" y="88" text-anchor="middle" font-size="8" fill="#999">(block (1,0))</text>
+      <!-- Phase 1 tile: rows 2-3, cols 0-1 -->
+      <rect x="260" y="105" width="40" height="40" fill="#ffcdd2" stroke="#c62828" stroke-width="2"/>
+      <text x="280" y="130" text-anchor="middle" font-size="9" font-weight="bold">B tile (phase 1)</text>
+      <rect x="300" y="105" width="80" height="40" fill="#f5f5f5" stroke="#999" stroke-width="1"/>
+
+      <rect x="260" y="145" width="120" height="40" fill="#f5f5f5" stroke="#999" stroke-width="1"/>
+    </g>
+    <text x="320" y="210" text-anchor="middle" font-size="9" fill="#555">Block (0,0) walks these 2 tiles ↓</text>
+
+    <!-- C matrix with output tile -->
+    <text x="510" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#2e7d32">C (4×4)</text>
+    <g>
+      <rect x="460" y="65" width="40" height="40" fill="#a5d6a7" stroke="#2e7d32" stroke-width="2"/>
+      <text x="480" y="82" text-anchor="middle" font-size="9" font-weight="bold">C00 C01</text>
+      <text x="480" y="98" text-anchor="middle" font-size="9" font-weight="bold">C10 C11</text>
+      <rect x="500" y="65" width="40" height="40" fill="#f5f5f5" stroke="#999" stroke-width="1"/>
+      <text x="520" y="88" text-anchor="middle" font-size="8" fill="#999">block (1,0)</text>
+      <rect x="460" y="105" width="40" height="40" fill="#f5f5f5" stroke="#999" stroke-width="1"/>
+      <rect x="500" y="105" width="40" height="40" fill="#f5f5f5" stroke="#999" stroke-width="1"/>
+    </g>
+    <text x="500" y="210" text-anchor="middle" font-size="9" fill="#555">computed by Block (0,0)</text>
+
+    <!-- Legend / explanation box -->
+    <rect x="30" y="235" width="660" height="80" fill="#f8f8f0" stroke="#999" stroke-width="1" rx="4"/>
+    <text x="360" y="255" text-anchor="middle" font-size="11" font-weight="bold" fill="#333">How One Block Produces One Output Tile</text>
+    <text x="45" y="275" font-size="10" fill="#333">Block (0,0) owns output tile C[0..1, 0..1]. To fill it, it must sweep all of A's row-strip and all of B's col-strip.</text>
+    <text x="45" y="291" font-size="10" fill="#333">It does this in <strong>N/T = 2 phases</strong>: in each phase it loads one A-tile <em>and</em> one B-tile into shared memory, multiplies them,</text>
+    <text x="45" y="307" font-size="10" fill="#333">and accumulates the partial result into its own output tile. After 2 phases the dot products are complete.</text>
+  </svg>
+  <div class="diagram-caption">Figure 5.1 — Each block owns one output tile. To compute it, the block iterates over a <em>strip</em> of A and a <em>strip</em> of B, one tile at a time.</div>
+</div>
+
+<h3>5.2 Phase 0: Load and Partial Multiply</h3>
+
+<p>
+Focus on block (0, 0). In phase 0, the four threads of the block cooperatively load the left-most 2 × 2 tile of A and the top-most 2 × 2 tile of B into two shared arrays, <code>As</code> and <code>Bs</code>:
+</p>
+
+<div class="diagram">
+  <svg width="720" height="430" viewBox="0 0 720 430">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Phase 0 — Cooperative Load + Partial Multiply (Block (0,0))</text>
+
+    <!-- A matrix with phase-0 tile highlighted -->
+    <text x="80" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565c0">Global A</text>
+    <g font-size="9" text-anchor="middle">
+      <rect x="40" y="65" width="35" height="26" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+      <text x="57" y="83">A00</text>
+      <rect x="75" y="65" width="35" height="26" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+      <text x="92" y="83">A01</text>
+      <rect x="110" y="65" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="127" y="83">A02</text>
+      <rect x="145" y="65" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="162" y="83">A03</text>
+
+      <rect x="40" y="91" width="35" height="26" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+      <text x="57" y="109">A10</text>
+      <rect x="75" y="91" width="35" height="26" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+      <text x="92" y="109">A11</text>
+      <rect x="110" y="91" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="127" y="109">A12</text>
+      <rect x="145" y="91" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="162" y="109">A13</text>
+
+      <rect x="40" y="117" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="75" y="117" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="110" y="117" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="145" y="117" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+
+      <rect x="40" y="143" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="75" y="143" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="110" y="143" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="145" y="143" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+    </g>
+
+    <!-- B matrix with phase-0 tile -->
+    <text x="300" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#c62828">Global B</text>
+    <g font-size="9" text-anchor="middle">
+      <rect x="260" y="65" width="35" height="26" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="277" y="83">B00</text>
+      <rect x="295" y="65" width="35" height="26" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="312" y="83">B01</text>
+      <rect x="330" y="65" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="365" y="65" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+
+      <rect x="260" y="91" width="35" height="26" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="277" y="109">B10</text>
+      <rect x="295" y="91" width="35" height="26" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="312" y="109">B11</text>
+      <rect x="330" y="91" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="365" y="91" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+
+      <rect x="260" y="117" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="295" y="117" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="330" y="117" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="365" y="117" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+
+      <rect x="260" y="143" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="295" y="143" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="330" y="143" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="365" y="143" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+    </g>
+
+    <!-- Load arrows -->
+    <defs>
+      <marker id="arr_load" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+        <polygon points="0 0, 10 4, 0 8" fill="#2e7d32"/>
+      </marker>
+    </defs>
+    <path d="M 180 100 Q 240 210 290 240" stroke="#2e7d32" stroke-width="2" fill="none" marker-end="url(#arr_load)" stroke-dasharray="5,3"/>
+    <text x="215" y="190" font-size="10" fill="#2e7d32" font-weight="bold">load</text>
+
+    <!-- Shared memory arrays -->
+    <text x="330" y="235" text-anchor="middle" font-size="11" font-weight="bold" fill="#0066cc">Shared Memory (per-block, fast!)</text>
+
+    <!-- As -->
+    <text x="250" y="258" text-anchor="middle" font-size="10" font-weight="bold" fill="#1565c0">As[2][2]</text>
+    <g font-size="9" text-anchor="middle">
+      <rect x="220" y="265" width="40" height="28" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="240" y="283">A00</text>
+      <rect x="260" y="265" width="40" height="28" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="280" y="283">A01</text>
+      <rect x="220" y="293" width="40" height="28" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="240" y="311">A10</text>
+      <rect x="260" y="293" width="40" height="28" fill="#90caf9" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="280" y="311">A11</text>
+    </g>
+
+    <!-- Bs -->
+    <text x="410" y="258" text-anchor="middle" font-size="10" font-weight="bold" fill="#c62828">Bs[2][2]</text>
+    <g font-size="9" text-anchor="middle">
+      <rect x="380" y="265" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+      <text x="400" y="283">B00</text>
+      <rect x="420" y="265" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+      <text x="440" y="283">B01</text>
+      <rect x="380" y="293" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+      <text x="400" y="311">B10</text>
+      <rect x="420" y="293" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+      <text x="440" y="311">B11</text>
+    </g>
+
+    <!-- Who-loads-what table -->
+    <g transform="translate(500, 60)">
+      <text x="105" y="0" text-anchor="middle" font-size="11" font-weight="bold" fill="#333">Who Loads What</text>
+      <rect x="0" y="8" width="210" height="18" fill="#e0e8f0"/>
+      <text x="40" y="21" text-anchor="middle" font-size="9" font-weight="bold">Thread (ty,tx)</text>
+      <text x="125" y="21" text-anchor="middle" font-size="9" font-weight="bold">Loads A[ty,tx]</text>
+      <text x="185" y="21" text-anchor="middle" font-size="9" font-weight="bold">→ As[ty,tx]</text>
+
+      <rect x="0" y="26" width="210" height="16" fill="#e3f2fd"/>
+      <text x="40" y="38" text-anchor="middle" font-size="9">(0,0)</text>
+      <text x="125" y="38" text-anchor="middle" font-size="9">A[0,0]</text>
+      <text x="185" y="38" text-anchor="middle" font-size="9">As[0,0]</text>
+
+      <rect x="0" y="42" width="210" height="16" fill="#f3f8ff"/>
+      <text x="40" y="54" text-anchor="middle" font-size="9">(0,1)</text>
+      <text x="125" y="54" text-anchor="middle" font-size="9">A[0,1]</text>
+      <text x="185" y="54" text-anchor="middle" font-size="9">As[0,1]</text>
+
+      <rect x="0" y="58" width="210" height="16" fill="#e3f2fd"/>
+      <text x="40" y="70" text-anchor="middle" font-size="9">(1,0)</text>
+      <text x="125" y="70" text-anchor="middle" font-size="9">A[1,0]</text>
+      <text x="185" y="70" text-anchor="middle" font-size="9">As[1,0]</text>
+
+      <rect x="0" y="74" width="210" height="16" fill="#f3f8ff"/>
+      <text x="40" y="86" text-anchor="middle" font-size="9">(1,1)</text>
+      <text x="125" y="86" text-anchor="middle" font-size="9">A[1,1]</text>
+      <text x="185" y="86" text-anchor="middle" font-size="9">As[1,1]</text>
+
+      <!-- B loads -->
+      <rect x="0" y="100" width="210" height="18" fill="#e0e8f0"/>
+      <text x="40" y="113" text-anchor="middle" font-size="9" font-weight="bold">Thread (ty,tx)</text>
+      <text x="125" y="113" text-anchor="middle" font-size="9" font-weight="bold">Loads B[ty,tx]</text>
+      <text x="185" y="113" text-anchor="middle" font-size="9" font-weight="bold">→ Bs[ty,tx]</text>
+
+      <rect x="0" y="118" width="210" height="16" fill="#ffebee"/>
+      <text x="40" y="130" text-anchor="middle" font-size="9">(0,0)</text>
+      <text x="125" y="130" text-anchor="middle" font-size="9">B[0,0]</text>
+      <text x="185" y="130" text-anchor="middle" font-size="9">Bs[0,0]</text>
+
+      <rect x="0" y="134" width="210" height="16" fill="#fff5f5"/>
+      <text x="40" y="146" text-anchor="middle" font-size="9">(0,1)</text>
+      <text x="125" y="146" text-anchor="middle" font-size="9">B[0,1]</text>
+      <text x="185" y="146" text-anchor="middle" font-size="9">Bs[0,1]</text>
+
+      <rect x="0" y="150" width="210" height="16" fill="#ffebee"/>
+      <text x="40" y="162" text-anchor="middle" font-size="9">(1,0)</text>
+      <text x="125" y="162" text-anchor="middle" font-size="9">B[1,0]</text>
+      <text x="185" y="162" text-anchor="middle" font-size="9">Bs[1,0]</text>
+
+      <rect x="0" y="166" width="210" height="16" fill="#fff5f5"/>
+      <text x="40" y="178" text-anchor="middle" font-size="9">(1,1)</text>
+      <text x="125" y="178" text-anchor="middle" font-size="9">B[1,1]</text>
+      <text x="185" y="178" text-anchor="middle" font-size="9">Bs[1,1]</text>
+
+      <rect x="0" y="8" width="210" height="174" fill="none" stroke="#999" stroke-width="1" rx="3"/>
+    </g>
+
+    <!-- __syncthreads bar -->
+    <rect x="30" y="335" width="660" height="24" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="4"/>
+    <text x="360" y="352" text-anchor="middle" font-size="12" font-weight="bold" fill="#b37700">__syncthreads()  —  wait until ALL four threads finish loading</text>
+
+    <!-- Compute line -->
+    <text x="30" y="380" font-size="11" font-weight="bold" fill="#333">Compute (each thread computes its own dot product over the tile):</text>
+    <text x="45" y="398" font-size="10" font-family="Courier New" fill="#1565c0">Thread (0,0): sum += As[0,0]·Bs[0,0] + As[0,1]·Bs[1,0]   // partial C[0,0]</text>
+    <text x="45" y="414" font-size="10" font-family="Courier New" fill="#c62828">Thread (0,1): sum += As[0,0]·Bs[0,1] + As[0,1]·Bs[1,1]   // partial C[0,1]</text>
+  </svg>
+  <div class="diagram-caption">Figure 5.2 — Phase 0 of tiled matmul. Four threads each load one element of A and one of B into shared memory, barrier, then each thread performs 2 multiply-adds using shared data.</div>
+</div>
+
+<p>
+Notice what happened: the <em>four</em> elements of the A-tile (A00, A01, A10, A11) were fetched from global memory exactly once each. Yet after the barrier, every thread in the block can read any of them. In particular, thread (0,0) and thread (0,1) both read As[0,0] and As[0,1] — so each of those global loads has been reused twice already, and we have not yet finished the phase.
+</p>
+
+<h3>5.3 Phase 1: Load Again and Accumulate</h3>
+
+<p>
+After phase 0, each thread holds a <em>partial</em> dot product (the first two of the four terms). To complete the sum, we slide one tile to the right in A and one tile down in B, reload shared memory, barrier, and accumulate the remaining two terms.
+</p>
+
+<div class="diagram">
+  <svg width="720" height="340" viewBox="0 0 720 340">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Phase 1 — Slide the Tile, Reload, Accumulate</text>
+
+    <!-- Global A with phase-1 tile highlighted -->
+    <text x="80" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565c0">Global A</text>
+    <g font-size="9" text-anchor="middle">
+      <rect x="40" y="65" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="57" y="83" fill="#999">A00</text>
+      <rect x="75" y="65" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="92" y="83" fill="#999">A01</text>
+      <rect x="110" y="65" width="35" height="26" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+      <text x="127" y="83">A02</text>
+      <rect x="145" y="65" width="35" height="26" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+      <text x="162" y="83">A03</text>
+
+      <rect x="40" y="91" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="57" y="109" fill="#999">A10</text>
+      <rect x="75" y="91" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <text x="92" y="109" fill="#999">A11</text>
+      <rect x="110" y="91" width="35" height="26" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+      <text x="127" y="109">A12</text>
+      <rect x="145" y="91" width="35" height="26" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+      <text x="162" y="109">A13</text>
+
+      <rect x="40" y="117" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="75" y="117" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="110" y="117" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="145" y="117" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="40" y="143" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="75" y="143" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="110" y="143" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+      <rect x="145" y="143" width="35" height="26" fill="#e3f2fd" stroke="#1565c0"/>
+    </g>
+
+    <!-- Global B with phase-1 tile highlighted -->
+    <text x="300" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#c62828">Global B</text>
+    <g font-size="9" text-anchor="middle">
+      <rect x="260" y="65" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <text x="277" y="83" fill="#999">B00</text>
+      <rect x="295" y="65" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <text x="312" y="83" fill="#999">B01</text>
+      <rect x="330" y="65" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="365" y="65" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+
+      <rect x="260" y="91" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <text x="277" y="109" fill="#999">B10</text>
+      <rect x="295" y="91" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <text x="312" y="109" fill="#999">B11</text>
+      <rect x="330" y="91" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="365" y="91" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+
+      <rect x="260" y="117" width="35" height="26" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="277" y="135">B20</text>
+      <rect x="295" y="117" width="35" height="26" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="312" y="135">B21</text>
+      <rect x="330" y="117" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="365" y="117" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+
+      <rect x="260" y="143" width="35" height="26" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="277" y="161">B30</text>
+      <rect x="295" y="143" width="35" height="26" fill="#ef9a9a" stroke="#c62828" stroke-width="2"/>
+      <text x="312" y="161">B31</text>
+      <rect x="330" y="143" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+      <rect x="365" y="143" width="35" height="26" fill="#ffcdd2" stroke="#c62828"/>
+    </g>
+
+    <!-- Shared memory (overwritten) -->
+    <text x="520" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#0066cc">Shared (overwritten)</text>
+
+    <g font-size="9" text-anchor="middle">
+      <text x="450" y="78" fill="#1565c0" font-weight="bold">As[2][2]</text>
+      <rect x="420" y="85" width="40" height="28" fill="#bbdefb" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="440" y="103">A02</text>
+      <rect x="460" y="85" width="40" height="28" fill="#bbdefb" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="480" y="103">A03</text>
+      <rect x="420" y="113" width="40" height="28" fill="#bbdefb" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="440" y="131">A12</text>
+      <rect x="460" y="113" width="40" height="28" fill="#bbdefb" stroke="#1565c0" stroke-width="1.5"/>
+      <text x="480" y="131">A13</text>
+
+      <text x="600" y="78" fill="#c62828" font-weight="bold">Bs[2][2]</text>
+      <rect x="570" y="85" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+      <text x="590" y="103">B20</text>
+      <rect x="610" y="85" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+      <text x="630" y="103">B21</text>
+      <rect x="570" y="113" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+      <text x="590" y="131">B30</text>
+      <rect x="610" y="113" width="40" height="28" fill="#ef9a9a" stroke="#c62828" stroke-width="1.5"/>
+      <text x="630" y="131">B31</text>
+    </g>
+
+    <!-- Load arrows -->
+    <defs>
+      <marker id="arr_l2" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+        <polygon points="0 0, 10 4, 0 8" fill="#2e7d32"/>
+      </marker>
+    </defs>
+    <path d="M 180 85 Q 300 85 420 100" stroke="#2e7d32" stroke-width="2" fill="none" marker-end="url(#arr_l2)" stroke-dasharray="5,3"/>
+    <path d="M 400 155 Q 490 150 570 120" stroke="#2e7d32" stroke-width="2" fill="none" marker-end="url(#arr_l2)" stroke-dasharray="5,3"/>
+
+    <!-- barrier -->
+    <rect x="30" y="195" width="660" height="22" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="4"/>
+    <text x="360" y="211" text-anchor="middle" font-size="12" font-weight="bold" fill="#b37700">__syncthreads()  —  shared memory now holds phase-1 data</text>
+
+    <!-- Compute -->
+    <text x="30" y="243" font-size="11" font-weight="bold" fill="#333">Accumulate (each thread adds the phase-1 contribution to its existing partial sum):</text>
+    <text x="45" y="263" font-size="10" font-family="Courier New" fill="#1565c0">Thread (0,0): sum += As[0,0]·Bs[0,0] + As[0,1]·Bs[1,0]   // = A02·B20 + A03·B30</text>
+    <text x="45" y="279" font-size="10" font-family="Courier New" fill="#c62828">Thread (0,1): sum += As[0,0]·Bs[0,1] + As[0,1]·Bs[1,1]   // = A02·B21 + A03·B31</text>
+
+    <!-- barrier + write -->
+    <rect x="30" y="292" width="660" height="22" fill="#fff8e1" stroke="#f0a000" stroke-width="2" rx="4"/>
+    <text x="360" y="308" text-anchor="middle" font-size="12" font-weight="bold" fill="#b37700">__syncthreads() (end-of-phase barrier) &nbsp;→&nbsp; then write sum back to C[row,col] in global memory</text>
+  </svg>
+  <div class="diagram-caption">Figure 5.3 — Phase 1 reuses the <em>same</em> shared arrays As and Bs to hold the next pair of tiles. Each thread's running <code>sum</code> now accumulates the remaining 2 terms of the 4-term dot product.</div>
+</div>
+
+<p>
+After phase 1, each thread's local accumulator <code>sum</code> holds the <em>complete</em> dot product. Writing it to <code>C[row, col]</code> finishes the output tile.
+</p>
+
+<div class="key-concept">
+  <div class="key-concept-title">The Accounting</div>
+  <p>Block (0,0) produced a 2 × 2 output tile (four elements of C). To do so:</p>
+  <ul>
+    <li>It fetched <strong>8</strong> global values from A (4 in each of 2 phases).</li>
+    <li>It fetched <strong>8</strong> global values from B.</li>
+    <li>Total: <strong>16 global loads</strong>.</li>
+  </ul>
+  <p>The naïve kernel, for the same 4 output elements, would have performed 2 · <em>N</em> = 8 loads per element = <strong>32 global loads</strong>. We cut traffic in half with a tile size of only 2. With a tile size of 16 we would cut traffic by 16×.</p>
+</div>
+
+<h3>5.4 Why Two <code>__syncthreads()</code> Calls?</h3>
+
+<p>
+The first barrier — after the load — is obvious: we must not start reading shared memory until every thread has finished writing its element. Without it, a fast thread could read a slot that has not yet been written, and it would get garbage.
+</p>
+
+<p>
+The second barrier — at the end of the compute step, before the next phase overwrites shared memory — is less obvious but equally crucial. Suppose we skip it. Thread (0,0) finishes its 2 multiply-adds quickly and jumps to the next iteration of the outer loop. It starts <em>overwriting</em> <code>As</code> and <code>Bs</code> with phase-1 data. Meanwhile, thread (1,1), which was a bit slower, is still reading <code>As[1,1]</code> from phase 0. The result: a race condition and silently wrong answers.
+</p>
+
+<div class="note-box">
+  <div class="note-box-title">The Two-Barrier Rule</div>
+  Every tiled kernel has <strong>two</strong> <code>__syncthreads()</code> inside the outer loop: one <em>after the load</em> (so compute can safely read shared memory), and one <em>after the compute</em> (so the next phase's load can safely overwrite shared memory). Skipping either barrier produces race conditions that sometimes "work" on small inputs and fail mysteriously at scale.
+</div>
+
+<!-- ================================================================== -->
+<h2>6. The Code Pattern</h2>
+
+<h3>6.1 The Kernel</h3>
+
+<p>Here is the full tiled matrix-multiplication kernel. Study it alongside the walkthrough above; every variable corresponds to something in the diagrams.</p>
+
+<pre>
+#define TILE 16
+
+__global__ void matMulTiled(const float* A, const float* B, float* C, int N) {
+    // --- Shared-memory tiles, one copy per block ---
+    __shared__ float As[TILE][TILE];
+    __shared__ float Bs[TILE][TILE];
+
+    // --- Which output element does THIS thread compute? ---
+    int row = blockIdx.y * TILE + threadIdx.y;
+    int col = blockIdx.x * TILE + threadIdx.x;
+
+    float sum = 0.0f;
+
+    // --- Loop over all the tiles along the K dimension ---
+    int numPhases = N / TILE;                   // assume N % TILE == 0 for now
+    for (int phase = 0; phase &lt; numPhases; ++phase) {
+
+        // (1) COOPERATIVE LOAD: each thread loads ONE element
+        As[threadIdx.y][threadIdx.x] = A[row * N + (phase * TILE + threadIdx.x)];
+        Bs[threadIdx.y][threadIdx.x] = B[(phase * TILE + threadIdx.y) * N + col];
+
+        // (2) Wait for the whole tile to be loaded
+        __syncthreads();
+
+        // (3) COMPUTE: use shared-memory values TILE times
+        for (int k = 0; k &lt; TILE; ++k) {
+            sum += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+        }
+
+        // (4) Wait before overwriting shared memory with the next tile
+        __syncthreads();
+    }
+
+    // --- Write the completed dot product ---
+    C[row * N + col] = sum;
+}
+</pre>
+
+<h3>6.2 Host-Side Launch</h3>
+
+<pre>
+dim3 threads(TILE, TILE);                    // 16 × 16 = 256 threads per block
+dim3 blocks(N / TILE, N / TILE);             // one block per output tile
+matMulTiled&lt;&lt;&lt;blocks, threads&gt;&gt;&gt;(d_A, d_B, d_C, N);
+</pre>
+
+<h3>6.3 Line-by-Line Dissection</h3>
+
+<div class="diagram">
+  <svg width="720" height="360" viewBox="0 0 720 360">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">What Each Line of the Tiled Kernel Does</text>
+
+    <!-- Boxes mapping code to diagrams -->
+    <rect x="30" y="40" width="660" height="38" fill="#e8f4f8" stroke="#0066cc" stroke-width="1.5" rx="4"/>
+    <text x="45" y="58" font-size="11" font-family="Courier New" fill="#0066cc">__shared__ float As[TILE][TILE];</text>
+    <text x="45" y="72" font-size="9" fill="#333">→ Reserve 1 KB of on-chip SRAM per block; the block's "study table."</text>
+
+    <rect x="30" y="82" width="660" height="38" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5" rx="4"/>
+    <text x="45" y="100" font-size="11" font-family="Courier New" fill="#1565c0">int row = blockIdx.y * TILE + threadIdx.y;</text>
+    <text x="45" y="114" font-size="9" fill="#333">→ This thread's assigned row in the output matrix C. Also the row it must load from A.</text>
+
+    <rect x="30" y="124" width="660" height="38" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.5" rx="4"/>
+    <text x="45" y="142" font-size="11" font-family="Courier New" fill="#1565c0">int col = blockIdx.x * TILE + threadIdx.x;</text>
+    <text x="45" y="156" font-size="9" fill="#333">→ This thread's assigned column in C. Also the column it must load from B.</text>
+
+    <rect x="30" y="166" width="660" height="38" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="4"/>
+    <text x="45" y="184" font-size="11" font-family="Courier New" fill="#2e7d32">As[ty][tx] = A[row * N + (phase * TILE + tx)];</text>
+    <text x="45" y="198" font-size="9" fill="#333">→ Cooperative load: the (ty, tx)-th thread fetches exactly one element of the current A-tile.</text>
+
+    <rect x="30" y="208" width="660" height="38" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5" rx="4"/>
+    <text x="45" y="226" font-size="11" font-family="Courier New" fill="#2e7d32">Bs[ty][tx] = B[(phase * TILE + ty) * N + col];</text>
+    <text x="45" y="240" font-size="9" fill="#333">→ Same, but for B — note that the ROW index is phase-dependent, not the column.</text>
+
+    <rect x="30" y="250" width="660" height="38" fill="#fff8e1" stroke="#f0a000" stroke-width="1.5" rx="4"/>
+    <text x="45" y="268" font-size="11" font-family="Courier New" fill="#b37700">__syncthreads();</text>
+    <text x="45" y="282" font-size="9" fill="#333">→ Barrier: pause until every thread in the block has finished writing to shared memory.</text>
+
+    <rect x="30" y="292" width="660" height="38" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="1.5" rx="4"/>
+    <text x="45" y="310" font-size="11" font-family="Courier New" fill="#7b1fa2">for (k=0; k &lt; TILE; ++k) sum += As[ty][k] * Bs[k][tx];</text>
+    <text x="45" y="324" font-size="9" fill="#333">→ TILE multiply-adds using ONLY shared memory. Each As/Bs element is read TILE times total across the block.</text>
+
+    <rect x="30" y="334" width="660" height="20" fill="#fff8e1" stroke="#f0a000" stroke-width="1.5" rx="4"/>
+    <text x="45" y="349" font-size="11" font-family="Courier New" fill="#b37700">__syncthreads();  // end-of-phase barrier before overwriting shared memory</text>
+  </svg>
+  <div class="diagram-caption">Figure 6.1 — The tiled kernel in eight functional steps. Shared-memory declaration, index computation, cooperative load, barrier, compute, barrier.</div>
+</div>
+
+<!-- ================================================================== -->
+<div class="page-break"></div>
+<h2>7. The Math — Why Tiling Wins</h2>
+
+<p>
+We can now quantify the benefit. Let <em>N</em> be the matrix dimension and <em>T</em> the tile size.
+</p>
+
+<h3>7.1 Global Reads: Naïve vs Tiled</h3>
+
+<p>
+In the <strong>naïve kernel</strong>, each of the <em>N²</em> output threads reads <em>N</em> elements of A and <em>N</em> elements of B.
+Total global loads: <strong>2 N³</strong>.
+</p>
+
+<p>
+In the <strong>tiled kernel</strong>, each block loads <em>N</em>/<em>T</em> A-tiles and <em>N</em>/<em>T</em> B-tiles, and each tile contains <em>T²</em> elements. There are (<em>N</em>/<em>T</em>)² blocks. So the total global loads are:
+</p>
+
+<pre>
+(N/T)² blocks × (N/T) phases × 2 tiles × T² elements per tile
+= (N²/T²) × (N/T) × 2 × T²
+= 2 N³ / T
+</pre>
+
+<p>
+In other words, tiling divides global memory traffic by exactly the tile size <em>T</em>.
+</p>
+
+<table>
+  <tr><th>N</th><th>T</th><th>Naïve loads</th><th>Tiled loads</th><th>Speed-up (traffic)</th></tr>
+  <tr><td>1024</td><td>1 (naïve)</td><td>2.1 × 10<sup>9</sup></td><td>same</td><td>1×</td></tr>
+  <tr><td>1024</td><td>8</td><td>2.1 × 10<sup>9</sup></td><td>2.7 × 10<sup>8</sup></td><td>8×</td></tr>
+  <tr class="highlight-row"><td>1024</td><td>16</td><td>2.1 × 10<sup>9</sup></td><td>1.3 × 10<sup>8</sup></td><td>16×</td></tr>
+  <tr><td>1024</td><td>32</td><td>2.1 × 10<sup>9</sup></td><td>6.7 × 10<sup>7</sup></td><td>32×</td></tr>
+  <tr><td>4096</td><td>32</td><td>1.4 × 10<sup>11</sup></td><td>4.3 × 10<sup>9</sup></td><td>32×</td></tr>
+</table>
+
+<h3>7.2 Arithmetic Intensity</h3>
+
+<div class="key-concept">
+  <div class="key-concept-title">Arithmetic Intensity</div>
+  <p><strong>Arithmetic intensity</strong> = (useful arithmetic operations) ÷ (bytes transferred from global memory). Higher is better: a kernel with low intensity will be <em>memory-bound</em>, meaning the compute units sit idle waiting for data. A kernel with high intensity is <em>compute-bound</em>, meaning the GPU's FLOPs are the bottleneck — which is almost always what you want.</p>
+</div>
+
+<p>
+Matrix multiplication does <em>2 N³</em> floating-point operations (one multiply and one add per <em>k</em>). Each float is 4 bytes.
+</p>
+<ul>
+  <li><strong>Naïve:</strong> 2 N³ FLOPs ÷ (2 N³ × 4 bytes) = <strong>0.25 FLOP/byte</strong> — deeply memory-bound.</li>
+  <li><strong>Tiled with T = 16:</strong> 2 N³ FLOPs ÷ (2 N³ / 16 × 4 bytes) = <strong>4 FLOP/byte</strong> — approaching the sweet spot of modern GPUs.</li>
+  <li><strong>Tiled with T = 32:</strong> <strong>8 FLOP/byte</strong> — comfortably compute-bound on many devices.</li>
+</ul>
+
+<p>
+In other words, tiling is not just a 10× or 20× optimization. It changes what the bottleneck <em>is</em>, moving the kernel from the slow memory lane into the fast compute lane.
+</p>
+
+<!-- ================================================================== -->
+<h2>8. Handling Boundaries</h2>
+
+<p>
+So far we assumed the matrix dimension is divisible by the tile size. In real life, <em>N</em> might be 1,000 and <em>T</em> might be 16 — and 1,000 is not divisible by 16. Two things can go wrong:
+</p>
+<ol>
+  <li>An out-of-bounds thread tries to load A[row, k] where either <code>row</code> or <code>k</code> is &ge; <em>N</em> — a read past the end of the array.</li>
+  <li>An out-of-bounds thread tries to write C[row, col] where either index is &ge; <em>N</em> — a write past the end.</li>
+</ol>
+
+<p>
+The standard fix is to load a <em>padded</em> tile: whenever a thread's global index is out of range, it writes a zero into its shared slot. Zeros are the identity for addition and the annihilator for multiplication, so they contribute nothing to the sum.
+</p>
+
+<pre>
+// Guarded cooperative load
+int aCol = phase * TILE + threadIdx.x;
+int bRow = phase * TILE + threadIdx.y;
+
+As[threadIdx.y][threadIdx.x] = (row &lt; N && aCol &lt; N)
+                               ? A[row * N + aCol] : 0.0f;
+Bs[threadIdx.y][threadIdx.x] = (bRow &lt; N && col &lt; N)
+                               ? B[bRow * N + col] : 0.0f;
+
+__syncthreads();
+
+for (int k = 0; k &lt; TILE; ++k) {
+    sum += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+}
+__syncthreads();
+
+// Guarded store
+if (row &lt; N && col &lt; N) {
+    C[row * N + col] = sum;
+}
+
+// Host-side: round grid UP to cover N
+dim3 blocks( (N + TILE - 1) / TILE, (N + TILE - 1) / TILE );
+</pre>
+
+<div class="diagram">
+  <svg width="720" height="230" viewBox="0 0 720 230">
+    <text x="360" y="22" text-anchor="middle" font-size="14" font-weight="bold" fill="#333">Boundary Handling: Padding With Zeros</text>
+
+    <!-- 5x5 matrix with 2x2 tiles, showing padded region -->
+    <text x="140" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#1565c0">Logical A (5×5)</text>
+    <g font-size="8" text-anchor="middle">
+      <!-- Row 0 -->
+      <rect x="80" y="65" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="108" y="65" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="136" y="65" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="164" y="65" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="192" y="65" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <!-- Row 1 -->
+      <rect x="80" y="87" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="108" y="87" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="136" y="87" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="164" y="87" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="192" y="87" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <!-- More rows ... -->
+      <rect x="80" y="109" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="108" y="109" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="136" y="109" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="164" y="109" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="192" y="109" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="80" y="131" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="108" y="131" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="136" y="131" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="164" y="131" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="192" y="131" width="28" height="22" fill="#bbdefb" stroke="#1565c0"/>
+      <rect x="80" y="153" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="108" y="153" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="136" y="153" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="164" y="153" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+      <rect x="192" y="153" width="28" height="22" fill="#90caf9" stroke="#1565c0"/>
+    </g>
+
+    <!-- Grid of 3x3 tiles (2x2 each) overlaid -->
+    <g stroke="#e65100" stroke-width="2.5" fill="none">
+      <rect x="80" y="65" width="56" height="44"/>
+      <rect x="136" y="65" width="56" height="44"/>
+      <rect x="192" y="65" width="56" height="44"/>  <!-- partial tile -->
+      <rect x="80" y="109" width="56" height="44"/>
+      <rect x="136" y="109" width="56" height="44"/>
+      <rect x="192" y="109" width="56" height="44"/>
+      <rect x="80" y="153" width="56" height="22"/>  <!-- partial -->
+      <rect x="136" y="153" width="56" height="22"/>
+      <rect x="192" y="153" width="56" height="22"/>
+    </g>
+    <text x="220" y="78" font-size="8" fill="#e65100" font-weight="bold">partial</text>
+    <text x="220" y="88" font-size="8" fill="#e65100" font-weight="bold">column</text>
+
+    <!-- Arrow -->
+    <defs>
+      <marker id="arr_pad" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+        <polygon points="0 0, 10 4, 0 8" fill="#555"/>
+      </marker>
+    </defs>
+    <line x1="280" y1="120" x2="400" y2="120" stroke="#555" stroke-width="2" marker-end="url(#arr_pad)"/>
+    <text x="340" y="112" text-anchor="middle" font-size="9" fill="#555">cooperative load</text>
+    <text x="340" y="132" text-anchor="middle" font-size="9" fill="#555">with guard</text>
+
+    <!-- Padded shared tile -->
+    <text x="520" y="55" text-anchor="middle" font-size="11" font-weight="bold" fill="#0066cc">Shared tile (2×2) — top-right corner case</text>
+    <g font-size="9" text-anchor="middle">
+      <rect x="470" y="75" width="40" height="30" fill="#90caf9" stroke="#1565c0" stroke-width="2"/>
+      <text x="490" y="94">A04</text>
+      <rect x="510" y="75" width="40" height="30" fill="#fff" stroke="#999" stroke-width="2" stroke-dasharray="4,3"/>
+      <text x="530" y="94" fill="#c62828" font-weight="bold">0</text>
+
+      <rect x="470" y="105" width="40" height="30" fill="#bbdefb" stroke="#1565c0" stroke-width="2"/>
+      <text x="490" y="124">A14</text>
+      <rect x="510" y="105" width="40" height="30" fill="#fff" stroke="#999" stroke-width="2" stroke-dasharray="4,3"/>
+      <text x="530" y="124" fill="#c62828" font-weight="bold">0</text>
+    </g>
+    <text x="520" y="155" text-anchor="middle" font-size="9" fill="#555">Column 5 is out of range → write 0</text>
+    <text x="520" y="168" text-anchor="middle" font-size="9" fill="#555">(the dot product still works!)</text>
+
+    <!-- Summary -->
+    <rect x="30" y="190" width="660" height="30" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2" rx="4"/>
+    <text x="360" y="210" text-anchor="middle" font-size="11" fill="#1b5e20" font-weight="bold">Zero-padding lets the same compute loop run for every tile — no special boundary kernel needed.</text>
+  </svg>
+  <div class="diagram-caption">Figure 8.1 — When the matrix dimension is not a multiple of the tile size, threads whose global index is out of range write 0 into their shared slot. The arithmetic still produces the correct dot product.</div>
+</div>
+
+<!-- ================================================================== -->
+<div class="page-break"></div>
+<h2>9. Common Pitfalls and Debugging Tips</h2>
+
+<h3>9.1 Pitfall: Missing <code>__syncthreads()</code></h3>
+
+<p>
+The most common tiling bug. Symptoms: the kernel produces correct results for small matrices but wrong results — often non-deterministic — for larger ones. Rule of thumb: for every shared-memory load there is a <code>__syncthreads()</code>; for every end-of-phase there is a <code>__syncthreads()</code>.
+</p>
+
+<h3>9.2 Pitfall: <code>__syncthreads()</code> Inside a Conditional</h3>
+
+<pre>
+if (row &lt; N) {
+    // ...
+    __syncthreads();   // DANGER: some threads may skip the barrier!
+}
+</pre>
+
+<p>
+If any thread in the block skips the barrier, <code>__syncthreads()</code> hangs the entire block forever. The barrier must be reached by <em>every</em> thread. Always place <code>__syncthreads()</code> in unconditional code.
+</p>
+
+<h3>9.3 Pitfall: Shared-Memory Size Overflow</h3>
+
+<p>
+A tile of 32 × 32 floats is 4 KB — fine. Two such tiles are 8 KB — also fine. But 64 × 64 would be 16 KB per tile, 32 KB for both, and you may begin to hit per-SM limits that shrink <em>occupancy</em> (the number of blocks that can be resident per SM). A good rule: keep total shared memory per block at or below 8 KB unless you are willing to measure the trade-off.
+</p>
+
+<h3>9.4 Pitfall: Bank Conflicts</h3>
+
+<p>
+Shared memory is organized into 32 <em>banks</em>, each 4 bytes wide. If two threads of the same warp access different addresses in the same bank, the accesses are <em>serialized</em>, costing you performance. For a <code>float As[TILE][TILE]</code>, accessing <code>As[k][tx]</code> for <code>tx = 0…31</code> is conflict-free when <code>TILE</code> is 32 (one access per bank), but accessing <code>As[ty][k]</code> for <code>ty = 0…31</code> when <code>TILE = 32</code> maps all 32 threads to the <em>same</em> bank — a 32-way conflict. A classic cure is to pad: declare <code>__shared__ float As[TILE][TILE + 1]</code>. The extra column shifts the row stride and restores conflict-free access.
+</p>
+
+<h3>9.5 Pitfall: Writing to the Wrong Index of the Shared Array</h3>
+
+<p>
+It is tempting to write <code>As[row][col]</code> instead of <code>As[threadIdx.y][threadIdx.x]</code>. The shared array is indexed by the thread's position <em>within the block</em>, not by the global row/column. Each block has its own private shared memory that starts over at <code>[0][0]</code>.
+</p>
+
+<h3>9.6 Debugging Technique: Serial Launch</h3>
+
+<p>
+Just like with grid-stride loops, you can launch the tiled kernel with a single block of a single thread for debugging:
+</p>
+
+<pre>
+matMulTiled&lt;&lt;&lt;1, dim3(TILE,TILE)&gt;&gt;&gt;(d_A, d_B, d_C, TILE);  // single block
+</pre>
+
+<p>
+Pick <em>N</em> = TILE so there is exactly one phase. Add <code>printf()</code> calls inside the kernel to dump each thread's <code>As</code> and <code>Bs</code> values after the barrier. Cross-check against a hand calculation.
+</p>
+
+<!-- ================================================================== -->
+<h2>10. Beyond Matrix Multiplication — Other Tiled Kernels</h2>
+
+<p>
+Matrix multiplication is the clearest demonstration of tiling, but the same pattern appears in many kernels. Any time a computation has <em>data reuse</em> — the same input element contributes to many outputs — tiling is a candidate. Here are the usual suspects:
+</p>
+
+<ul>
+  <li><strong>2D convolution (stencils, blur, sharpen, etc.)</strong> — A convolution with a 5 × 5 kernel touches 25 input pixels for every output pixel. Adjacent output pixels share most of those inputs. A tile loads a block of the input image <em>plus a halo</em> (a border of neighboring pixels), lets every thread convolve against shared memory, and dramatically cuts global reads.</li>
+
+  <li><strong>Reduction (sum, max, mean)</strong> — While the "classic" reduction uses shared memory as a tree-shaped accumulator, the fundamental trick is the same: pull a chunk of data into shared memory once, then let the threads of the block cooperate using that chunk.</li>
+
+  <li><strong>Transpose</strong> — Naïve transpose has uncoalesced writes; a tiled transpose loads a 32 × 32 tile into shared memory with coalesced reads, then writes it out with coalesced writes.</li>
+
+  <li><strong>Deep-learning attention and softmax</strong> — The state-of-the-art "FlashAttention" kernel is, at its core, an elaborate tiling scheme for the K and V matrices of a transformer. The same idea scaled to a research paper.</li>
+</ul>
+
+<div class="analogy">
+  <div class="analogy-title">The Underlying Pattern</div>
+  Whenever you find yourself thinking <em>"many threads need to look at the same data"</em>, reach for a tile. Load the data once from global memory, barrier, let everyone read it, barrier, move on to the next tile. This single idiom powers most of the fast kernels you will ever write.
+</div>
+
+<!-- ================================================================== -->
+<h2>11. The Mental Model — Tying It All Together</h2>
+
+<div class="diagram">
+  <svg width="720" height="320" viewBox="0 0 720 320">
+    <text x="360" y="25" text-anchor="middle" font-size="16" font-weight="bold" fill="#333">The Unified Mental Model of Tiling</text>
+
+    <!-- Step 1 -->
+    <rect x="30" y="50" width="200" height="90" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+    <text x="130" y="72" text-anchor="middle" font-size="12" font-weight="bold" fill="#2e7d32">1. Partition</text>
+    <text x="130" y="92" text-anchor="middle" font-size="10" fill="#333">Divide the input into</text>
+    <text x="130" y="106" text-anchor="middle" font-size="10" fill="#333">small square tiles</text>
+    <text x="130" y="122" text-anchor="middle" font-size="10" fill="#333">that fit in shared memory.</text>
+    <text x="130" y="136" text-anchor="middle" font-size="10" fill="#333">One block = one tile.</text>
+
+    <!-- Step 2 -->
+    <rect x="260" y="50" width="200" height="90" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+    <text x="360" y="72" text-anchor="middle" font-size="12" font-weight="bold" fill="#1565c0">2. Cooperate</text>
+    <text x="360" y="92" text-anchor="middle" font-size="10" fill="#333">Each thread loads ONE</text>
+    <text x="360" y="106" text-anchor="middle" font-size="10" fill="#333">element of the tile from</text>
+    <text x="360" y="122" text-anchor="middle" font-size="10" fill="#333">global memory into shared,</text>
+    <text x="360" y="136" text-anchor="middle" font-size="10" fill="#333">then __syncthreads().</text>
+
+    <!-- Step 3 -->
+    <rect x="490" y="50" width="200" height="90" rx="8" fill="#fce4ec" stroke="#c62828" stroke-width="2"/>
+    <text x="590" y="72" text-anchor="middle" font-size="12" font-weight="bold" fill="#c62828">3. Reuse</text>
+    <text x="590" y="92" text-anchor="middle" font-size="10" fill="#333">All threads consume</text>
+    <text x="590" y="106" text-anchor="middle" font-size="10" fill="#333">the shared tile many</text>
+    <text x="590" y="122" text-anchor="middle" font-size="10" fill="#333">times at SRAM speed,</text>
+    <text x="590" y="136" text-anchor="middle" font-size="10" fill="#333">then __syncthreads() again.</text>
+
+    <!-- Arrows between -->
+    <defs>
+      <marker id="arr_m" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0, 8 3, 0 6" fill="#333"/>
+      </marker>
+    </defs>
+    <line x1="232" y1="95" x2="258" y2="95" stroke="#333" stroke-width="2" marker-end="url(#arr_m)"/>
+    <line x1="462" y1="95" x2="488" y2="95" stroke="#333" stroke-width="2" marker-end="url(#arr_m)"/>
+
+    <!-- Repeat arrow -->
+    <path d="M 590 143 Q 590 190 360 190 Q 130 190 130 143" stroke="#333" stroke-width="2" fill="none" stroke-dasharray="5,3" marker-end="url(#arr_m)"/>
+    <text x="360" y="183" text-anchor="middle" font-size="10" fill="#666" font-weight="bold">repeat for next tile (phase)</text>
+
+    <!-- Common rule box -->
+    <rect x="60" y="210" width="600" height="95" rx="10" fill="#fff8e1" stroke="#f9a825" stroke-width="3"/>
+    <text x="360" y="235" text-anchor="middle" font-size="15" font-weight="bold" fill="#e65100">The One Rule</text>
+
+    <text x="360" y="262" text-anchor="middle" font-size="12" fill="#333">
+      Every element fetched from global memory must be <strong>reused T times</strong> from shared memory,
+    </text>
+    <text x="360" y="280" text-anchor="middle" font-size="12" fill="#333">
+      where <em>T</em> = tile size. That single fact divides your memory traffic by <em>T</em>,
+    </text>
+    <text x="360" y="298" text-anchor="middle" font-size="12" fill="#333">
+      and turns a memory-bound kernel into a compute-bound one.
+    </text>
+  </svg>
+  <div class="diagram-caption">Figure 11.1 — Tiling in three steps. Every shared-memory algorithm follows this cycle: partition, cooperatively load with a barrier, reuse at SRAM speed with another barrier.</div>
+</div>
+
+<h2>12. Summary</h2>
+
+<p>
+Tiling is the pattern that moves a CUDA kernel from the slow lane of global memory into the fast lane of on-chip SRAM. It rests on a handful of ideas that, together, are enough to write fast kernels for most data-parallel problems:
+</p>
+
+<ol>
+  <li><strong>The Problem:</strong> Global memory is 20–40× slower than shared memory. A naïve kernel re-fetches the same data over and over, wasting the GPU's bandwidth.</li>
+
+  <li><strong>The Solution:</strong> Partition the input into tiles that fit in shared memory. Each block cooperatively loads one tile, barriers, computes using shared memory, barriers again, then moves to the next tile.</li>
+
+  <li><strong>The Formula:</strong> Tiling with tile size <em>T</em> divides global memory traffic by exactly <em>T</em>. Arithmetic intensity scales from 0.25 FLOP/byte (naïve) to <em>T</em> FLOP/byte (tiled).</li>
+
+  <li><strong>The Two Barriers:</strong> One after the load (so compute can read safely), one after the compute (so the next load can overwrite safely).</li>
+
+  <li><strong>The Boundary Fix:</strong> When dimensions are not multiples of the tile, pad shared memory with zeros and guard the final write.</li>
+
+  <li><strong>Beyond matmul:</strong> The same pattern powers convolutions, stencils, reductions, transposes, attention — any kernel with data reuse.</li>
+</ol>
+
+<div class="key-concept">
+  <div class="key-concept-title">The One Idea to Remember</div>
+  <p style="font-size: 14pt; text-align: center; margin: 10px 0;">
+    <strong>Load once from global, barrier, reuse many times from shared, barrier, repeat.</strong>
+  </p>
+  <p style="font-size: 12pt; text-align: center;">
+    If you internalize that single sentence, tiling — and most of the high-performance CUDA that builds on it — is yours.
+  </p>
+</div>
+
+<p>
+With grid-stride loops you learned how to make a kernel <em>correct</em> for any input size. With tiling you have now learned how to make the same kernel <em>fast</em>. Together they are the two patterns that will carry you through the first several years of a GPU-programming career.
+</p>
+
+<hr style="margin-top: 50px; border: none; border-top: 2px solid #333;"/>
+<p style="text-align: center; font-style: italic; color: #666; margin-top: 20px;">
+End of Chapter — Tiled Shared-Memory Kernels in CUDA
+</p>
+
+
+<div id="ai-disclaimer-banner" style="margin:60px auto 40px;padding-top:20px;border-top:1px solid #ddd;max-width:880px;font-family:'Helvetica Neue',Arial,sans-serif;font-size:10.5pt;color:#555;line-height:1.6">
+  <strong style="color:#333">About this page.</strong>
+  The prose here was <em>written by AI</em> (Claude). The questions, the learning path, and the decisions about what to include are mine &mdash; I wanted to learn CUDA properly and used AI to help me turn my scratch notes into readable chapters. Please cross-reference with authoritative sources (<a href="https://docs.nvidia.com/cuda/" style="color:#0066cc">NVIDIA CUDA Programming Guide</a>, the <em>Programming Massively Parallel Processors</em> textbook, etc.) before relying on anything here for production work.
+  &nbsp;&middot;&nbsp; <a href="index.html" style="color:#0066cc">&larr; CUDA chapter index</a>
+</div>
+</body>
+</html>
